@@ -1,0 +1,26 @@
+# 가상환경 및 시스템 파일 무시
+.venv/
+.venv
+venv/
+venv
+__pycache__/
+.DS_Store
+
+# 외부 라이브러리/프로젝트 무시
+ComfyUI/
+ComfyUI
+
+# 보안 (API 키 등 절대 올리면 안 됨)
+.env
+api_keys.txt
+secrets.json
+
+# 개인적인 데이터 & 무거운 모델 무시
+*.mp4
+*.mp3
+*.png
+*.jpg
+*.safetensors
+*.pth
+/outputs
+/inputs

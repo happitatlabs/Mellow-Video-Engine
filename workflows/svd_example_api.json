@@ -1,0 +1,74 @@
+{
+  "_comment": "SVD (Stable Video Diffusion) Example Workflow (API Format)",
+
+  "1": {
+    "class_type": "LoadImage",
+    "_comment": "Input image - ComfyVideoAgent will inject uploaded image path here",
+    "inputs": {
+      "image": "input_image.png",
+      "upload": "image"
+    }
+  },
+
+  "2": {
+    "class_type": "ImageOnlyCheckpointLoader",
+    "inputs": {
+      "ckpt_name": "svd_xt_1_1.safetensors"
+    }
+  },
+
+  "3": {
+    "class_type": "SVD_img2vid_Conditioning",
+    "_comment": "Motion control - motion_bucket_id (1-255) controls movement intensity",
+    "inputs": {
+      "width": 1024,
+      "height": 576,
+      "video_frames": 25,
+      "motion_bucket_id": 127,
+      "fps": 6,
+      "augmentation_level": 0.0,
+      "clip_vision": ["2", 1],
+      "init_image": ["1", 0],
+      "vae": ["2", 2]
+    }
+  },
+
+  "4": {
+    "class_type": "KSampler",
+    "_comment": "CRITICAL: Seed must be randomized each run",
+    "inputs": {
+      "seed": 987654321,
+      "steps": 20,
+      "cfg": 2.5,
+      "sampler_name": "euler",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["2", 0],
+      "positive": ["3", 0],
+      "negative": ["3", 1],
+      "latent_image": ["3", 2]
+    }
+  },
+
+  "5": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["4", 0],
+      "vae": ["2", 2]
+    }
+  },
+
+  "6": {
+    "class_type": "VHS_VideoCombine",
+    "_comment": "Output node - saves as MP4",
+    "inputs": {
+      "frame_rate": 6,
+      "loop_count": 0,
+      "filename_prefix": "svd_output",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "images": ["5", 0]
+    }
+  }
+}

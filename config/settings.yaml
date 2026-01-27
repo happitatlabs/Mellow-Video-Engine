@@ -1,0 +1,106 @@
+# Mellow-Video-Engine Configuration
+# ===================================
+
+# Project Settings
+project:
+  name: "Mellow-Video-Engine"
+  version: "0.1.0"
+  assets_dir: "./assets"
+  temp_dir: "./assets/temp"
+
+# Model Paths (Local)
+models:
+  whisper:
+    model_size: "large-v3"  # tiny, base, small, medium, large-v2, large-v3
+    device: "cuda"
+    compute_type: "float16"
+
+  llm:
+    provider: "ollama"  # ollama, vllm
+    model_name: "qwen2.5:7b"
+    base_url: "http://localhost:11434"
+    temperature: 0.7
+    max_tokens: 2048
+
+# ComfyUI API Settings
+comfyui:
+  host: "127.0.0.1"
+  port: 8188
+  use_ssl: false
+  timeout: 300  # seconds
+
+  # Default workflow settings
+  image_generation:
+    model: "flux1-dev-Q3_K_S.gguf"
+    width: 1216
+    height: 684
+    steps: 20
+    cfg_scale: 7.5
+    sampler: "euler"
+    scheduler: "normal"
+
+  video_generation:
+    model: "ltx-video"  # svd, ltx-video
+    frames: 49
+    fps: 24
+    motion_bucket_id: 127
+
+# FFmpeg Settings
+ffmpeg:
+  path: "ffmpeg"  # or full path to ffmpeg executable
+  video_codec: "libx264"
+  audio_codec: "aac"
+  video_bitrate: "5000k"
+  audio_bitrate: "192k"
+  preset: "medium"
+
+  # Output format
+  output:
+    format: "mp4"
+    resolution: "1920x1080"
+    fps: 30
+
+# Font Settings for Overlays
+fonts:
+  title:
+    path: "./assets/fonts/NotoSansKR-Bold.ttf"
+    size: 72
+    color: "white"
+  subtitle:
+    path: "./assets/fonts/NotoSansKR-Regular.ttf"
+    size: 36
+    color: "white"
+  lyrics:
+    path: "./assets/fonts/NotoSansKR-Medium.ttf"
+    size: 48
+    color: "white"
+    outline_color: "black"
+    outline_width: 2
+
+# YouTube API Settings
+youtube:
+  client_secrets_file: "./config/client_secrets.json"
+  credentials_file: "./config/youtube_credentials.json"
+  scopes:
+    - "https://www.googleapis.com/auth/youtube.upload"
+    - "https://www.googleapis.com/auth/youtube"
+
+# Localization Settings
+localization:
+  source_language: "ko"
+  target_languages:
+    - "en"
+    - "ja"
+    - "zh-CN"
+
+# VRAM Management
+vram:
+  max_usage_gb: 16
+  unload_after_use: true
+  gc_aggressive: true
+
+# Logging
+logging:
+  level: "INFO"
+  file: "./logs/mellow.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

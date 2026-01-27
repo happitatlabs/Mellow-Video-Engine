@@ -1,0 +1,48 @@
+# Mellow-Video-Engine Dependencies
+# =================================
+
+# Core
+pyyaml>=6.0
+pydantic>=2.0.0
+httpx>=0.25.0
+requests>=2.31.0
+websockets>=12.0
+websocket-client>=1.6.0
+
+# Audio Processing
+faster-whisper>=1.0.0
+
+# AI/ML Framework
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# LLM Integration
+openai>=1.0.0
+aiohttp>=3.9.0
+
+# Video Processing
+ffmpeg-python>=0.2.0
+
+# YouTube API
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.0
+
+# UI - Textual TUI Framework
+textual>=0.47.0
+rich>=13.0.0
+
+# UI (optional)
+# PyQt6>=6.5.0  # Uncomment for GUI support
+
+# Development
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+ruff>=0.1.0
+mypy>=1.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+Pillow>=10.0.0

@@ -1,0 +1,77 @@
+{
+  "_comment": "LTX-Video Example Workflow (API Format) - Node IDs may vary in your workflow",
+
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "ltx-video-2b-v0.9.safetensors"
+    }
+  },
+
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "_comment": "Positive Prompt - ComfyVideoAgent will inject params.prompt here",
+    "inputs": {
+      "text": "A serene mountain landscape at golden hour, mist rising from valleys, cinematic wide shot, no humans, masterpiece quality",
+      "clip": ["1", 1]
+    }
+  },
+
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "_comment": "Negative Prompt",
+    "inputs": {
+      "text": "humans, people, faces, text, watermark, blurry, low quality",
+      "clip": ["1", 1]
+    }
+  },
+
+  "4": {
+    "class_type": "EmptyLatentImage",
+    "_comment": "Frame count - ComfyVideoAgent will inject num_frames to batch_size",
+    "inputs": {
+      "width": 768,
+      "height": 512,
+      "batch_size": 97
+    }
+  },
+
+  "5": {
+    "class_type": "KSampler",
+    "_comment": "CRITICAL: Seed must be randomized each run to avoid cached results",
+    "inputs": {
+      "seed": 123456789,
+      "steps": 20,
+      "cfg": 7.5,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": ["1", 0],
+      "positive": ["2", 0],
+      "negative": ["3", 0],
+      "latent_image": ["4", 0]
+    }
+  },
+
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["5", 0],
+      "vae": ["1", 2]
+    }
+  },
+
+  "7": {
+    "class_type": "VHS_VideoCombine",
+    "_comment": "Output node - ComfyVideoAgent will set filename_prefix",
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "ltx_output",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true,
+      "images": ["6", 0]
+    }
+  }
+}

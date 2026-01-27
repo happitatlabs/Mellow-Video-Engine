@@ -1,0 +1,339 @@
+# =============================================================================
+# Mellow-Video-Engine - Visual Planning Prompts Configuration
+# =============================================================================
+# 뮤직비디오 자동 생성을 위한 프롬프트 템플릿 설정
+# Author: Mellow-Video-Engine Team
+# =============================================================================
+
+visual_planning:
+  # ---------------------------------------------------------------------------
+  # System Prompt - JSON 출력 최적화 (Ollama/Qwen용)
+  # ---------------------------------------------------------------------------
+  system_prompt: |
+    You are a world-class cinematographer specializing in uninhabited, cinematic landscapes.
+    You create music video scenes WITHOUT any humans, people, or figures.
+
+    CRITICAL OUTPUT RULES:
+    1. Respond ONLY with a valid JSON object
+    2. NO markdown code blocks (no ```json or ```)
+    3. NO explanatory text before or after the JSON
+    4. NO conversational responses
+    5. Start your response with { and end with }
+
+    LANGUAGE RULES:
+    - visual_prompt: MUST be in English (video AI models only understand English)
+    - negative_prompt: MUST be in English
+    - color_palette: English color names
+    - mood: English word
+    - scene_summary: Korean allowed
+
+    ABSOLUTE RULES:
+    - NO humans, people, faces, hands, body parts
+    - NO text, logos, watermarks
+    - Focus on nature, landscapes, atmospheric environments
+    - Maintain visual continuity between scenes
+
+  # ---------------------------------------------------------------------------
+  # Scene Plan Template - 가사 기반 장면 기획
+  # ---------------------------------------------------------------------------
+  scene_plan_template: |
+    [장면 기획 요청]
+
+    === 노래 정보 ===
+    전체 분위기(Global Mood): {global_mood}
+    총 재생 시간: {total_duration}초
+
+    === 현재 세그먼트 ===
+    가사: "{lyrics}"
+    시작 시간: {start_time}초
+    종료 시간: {end_time}초
+    길이: {duration}초
+    순서: {segment_index} / {total_segments}
+
+    === 이전 장면 맥락 (시각적 연속성 유지 필수) ===
+    {previous_context}
+
+    === 요청 사항 ===
+    위 가사의 감정과 의미를 분석하여 시네마틱한 장면을 기획하라.
+
+    고려 사항:
+    1. 가사의 감정적 핵심을 시각적 은유로 표현
+    2. 이전 장면에서 자연스럽게 전환되는 비주얼
+    3. 조명, 날씨, 시간대를 활용한 무드 연출
+    4. 카메라 움직임으로 음악적 리듬 표현
+
+    아래 JSON 형식으로 정확히 응답하라:
+    {{
+      "visual_prompt": "[ENGLISH ONLY] Detailed scene description for SVD/LTX video generation (50-150 words). Include specific environment, lighting, colors, composition. Example: 'Vast misty mountain range at dawn, layers of blue-gray peaks fading into fog, golden light breaking through dramatic clouds, ancient pine forest in foreground, cinematic wide shot, atmospheric depth'",
+      "negative_prompt": "[ENGLISH ONLY] Elements to avoid. Example: 'humans, people, text, watermark, blurry, low quality'",
+      "camera_movement": "pan_left | pan_right | zoom_in | zoom_out | tilt_up | tilt_down | static | tracking | crane_up | crane_down",
+      "camera_speed": "very_slow | slow | medium | fast",
+      "lighting": "golden_hour | blue_hour | overcast | dramatic | soft | harsh | backlit | rim_light | neon | moonlight",
+      "color_palette": ["English color name 1", "English color name 2", "accent color"],
+      "mood": "Single English word: serene | melancholic | hopeful | tense | euphoric | mysterious | nostalgic | ethereal",
+      "environment": "nature | urban | indoor | underwater | aerial | abstract",
+      "weather": "clear | cloudy | foggy | rainy | snowy | stormy | misty",
+      "time_of_day": "dawn | morning | noon | afternoon | dusk | night | golden_hour | blue_hour",
+      "scene_summary": "[MUST BE IN KOREAN] 다음 장면 연속성을 위한 한 줄 요약. 사용자가 이해하기 쉽게 한국어로 작성. 예: '안개 낀 산맥의 여명, 황금빛이 구름을 뚫고 내려옴'"
+    }}
+
+  # ---------------------------------------------------------------------------
+  # Instrumental Template - 간주/전주/후주 구간용
+  # ---------------------------------------------------------------------------
+  instrumental_template: |
+    [간주 구간 - 추상적 비주얼 기획]
+
+    === 노래 정보 ===
+    전체 분위기(Global Mood): {global_mood}
+
+    === 현재 세그먼트 ===
+    구간 유형: {segment_type}
+    시작 시간: {start_time}초
+    종료 시간: {end_time}초
+    길이: {duration}초
+    순서: {segment_index} / {total_segments}
+
+    === 이전 장면 맥락 ===
+    {previous_context}
+
+    === 특별 지시 사항 ===
+    가사가 없는 간주 구간이다. 다음에 집중하라:
+    - 추상적이고 몽환적인 자연 현상 (오로라, 구름, 물결, 빛줄기)
+    - 마이크로/매크로 관점 (이슬방울, 모래알, 별빛)
+    - 꿈결 같지만 실제 촬영 가능한 초현실적 풍경
+    - 감정적 여운을 남기는 전환 이미지
+
+    가사 구간보다 더 추상적이고, 더 몽환적이며, 더 대기적인 비주얼을 기획하라.
+    테렌스 말릭의 영화 + BBC 자연 다큐멘터리 스타일을 참고하라.
+
+    아래 JSON 형식으로 정확히 응답하라:
+    {{
+      "visual_prompt": "[ENGLISH ONLY] Abstract and dreamlike scene description (50-150 words). Focus on textures, light movement, natural phenomena. Example: 'Abstract aurora borealis dancing over frozen arctic lake, ethereal green and purple lights reflecting on mirror-like ice surface, star-filled cosmic sky above, gentle mist rising, otherworldly transcendent beauty'",
+      "negative_prompt": "[ENGLISH ONLY] Elements to avoid. Example: 'humans, people, text, watermark, blurry, artificial objects'",
+      "camera_movement": "slow_zoom_in | slow_zoom_out | drift | orbit | float | static_contemplative",
+      "camera_speed": "very_slow | slow",
+      "lighting": "ethereal | bioluminescent | cosmic | soft_diffused | rim_light | aurora",
+      "color_palette": ["English color name 1", "English color name 2", "accent color"],
+      "mood": "transcendent | meditative | surreal | dreamlike | cosmic | introspective",
+      "environment": "abstract | macro | cosmic | underwater | aerial",
+      "weather": "ethereal | cosmic | aurora | fog | mist",
+      "time_of_day": "timeless | cosmic | dream | twilight",
+      "scene_summary": "다음 장면 연속성을 위한 한 줄 요약 (한국어 허용)",
+      "abstract_level": "high"
+    }}
+
+  # ---------------------------------------------------------------------------
+  # Context Templates - 맥락 주입용
+  # ---------------------------------------------------------------------------
+  previous_context_template: |
+    이전 장면 (세그먼트 {prev_index}):
+    - 장면 요약: {prev_summary}
+    - 환경: {prev_environment}
+    - 조명: {prev_lighting}
+    - 색상 팔레트: {prev_colors}
+    - 분위기: {prev_mood}
+    - 시간대: {prev_time_of_day}
+
+    연속성 가이드라인:
+    - 색온도를 유지하거나 부드럽게 전환할 것
+    - 환경 변화 시 전환 요소(하늘, 물, 안개) 활용
+    - 감정선의 급격한 변화 금지
+    - 시간대 진행을 자연스럽게 표현
+
+  first_scene_context: |
+    이것은 뮤직비디오의 첫 장면이다.
+    시각적 세계관을 강력하게 확립하라.
+    첫 인상이 전체 영상의 톤을 결정한다.
+    기억에 남고 감정을 환기시키는 오프닝을 만들어라.
+
+  # ---------------------------------------------------------------------------
+  # No-Human Policy - 사람 배제 정책
+  # ---------------------------------------------------------------------------
+  no_human_policy:
+    # 항상 추가되는 긍정 프롬프트
+    positive_additions:
+      - "no humans"
+      - "uninhabited"
+      - "empty of people"
+      - "solitary landscape"
+      - "scenery only"
+      - "masterpiece"
+      - "best quality"
+      - "highly detailed"
+      - "cinematic composition"
+      - "professional cinematography"
+      - "8k resolution"
+      - "film grain"
+      - "atmospheric"
+      - "award-winning photography"
+      - "anamorphic lens"
+
+    # 항상 추가되는 부정 프롬프트
+    negative_prompt_base: |
+      humans, people, person, man, woman, child, baby,
+      face, faces, portrait, selfie, crowd, figure, silhouette,
+      hands, fingers, arms, legs, feet, body, skin, body parts,
+      human shadow, human reflection, pedestrian, tourist,
+      text, watermark, logo, signature, title, subtitle, caption,
+      low quality, blurry, pixelated, jpeg artifacts, noise,
+      ugly, deformed, disfigured, mutated, distorted,
+      frame, border, vignette, letterbox,
+      cartoon, anime, illustration, drawing, painting, sketch,
+      3d render, cgi, artificial, fake
+
+  # ---------------------------------------------------------------------------
+  # Style Presets - 스타일 프리셋
+  # ---------------------------------------------------------------------------
+  style_presets:
+    cinematic:
+      additions:
+        - "cinematic color grading"
+        - "movie still"
+        - "35mm film"
+        - "depth of field"
+        - "bokeh"
+        - "dramatic shadows"
+      description: "영화적 스타일"
+
+    documentary:
+      additions:
+        - "natural lighting"
+        - "authentic atmosphere"
+        - "environmental storytelling"
+        - "raw beauty"
+      description: "다큐멘터리 스타일"
+
+    dreamlike:
+      additions:
+        - "soft focus"
+        - "ethereal glow"
+        - "pastel tones"
+        - "otherworldly atmosphere"
+        - "surreal quality"
+        - "magical realism"
+      description: "몽환적 스타일"
+
+    dramatic:
+      additions:
+        - "high contrast"
+        - "chiaroscuro"
+        - "bold shadows"
+        - "intense atmosphere"
+        - "moody"
+      description: "드라마틱 스타일"
+
+    minimal:
+      additions:
+        - "minimalist composition"
+        - "negative space"
+        - "clean lines"
+        - "subtle tones"
+      description: "미니멀 스타일"
+
+# =============================================================================
+# Motion Synthesis Configuration
+# =============================================================================
+motion_synthesis:
+  mood_to_motion:
+    serene:
+      type: "slow_zoom"
+      speed: 0.2
+      direction: "in"
+
+    melancholic:
+      type: "slow_pan"
+      speed: 0.15
+      direction: "left"
+
+    hopeful:
+      type: "slow_zoom"
+      speed: 0.3
+      direction: "out"
+
+    tense:
+      type: "subtle_shake"
+      speed: 0.4
+      intensity: 0.1
+
+    euphoric:
+      type: "dynamic_zoom"
+      speed: 0.5
+      direction: "out"
+
+    mysterious:
+      type: "drift"
+      speed: 0.1
+      direction: "random"
+
+    nostalgic:
+      type: "slow_pan"
+      speed: 0.2
+      direction: "right"
+
+    ethereal:
+      type: "float"
+      speed: 0.15
+      direction: "up"
+
+    transcendent:
+      type: "orbit"
+      speed: 0.1
+
+    meditative:
+      type: "breathe"
+      speed: 0.1
+
+# =============================================================================
+# Validation Schema
+# =============================================================================
+schema:
+  required_fields:
+    - "visual_prompt"
+    - "negative_prompt"
+    - "camera_movement"
+    - "lighting"
+    - "scene_summary"
+
+  optional_fields:
+    - "camera_speed"
+    - "color_palette"
+    - "mood"
+    - "environment"
+    - "weather"
+    - "time_of_day"
+    - "abstract_level"
+
+  camera_movement_values:
+    - "pan_left"
+    - "pan_right"
+    - "zoom_in"
+    - "zoom_out"
+    - "tilt_up"
+    - "tilt_down"
+    - "static"
+    - "tracking"
+    - "crane_up"
+    - "crane_down"
+    - "slow_zoom_in"
+    - "slow_zoom_out"
+    - "drift"
+    - "orbit"
+    - "float"
+    - "static_contemplative"
+
+  lighting_values:
+    - "golden_hour"
+    - "blue_hour"
+    - "overcast"
+    - "dramatic"
+    - "soft"
+    - "harsh"
+    - "backlit"
+    - "rim_light"
+    - "neon"
+    - "moonlight"
+    - "ethereal"
+    - "bioluminescent"
+    - "cosmic"
+    - "soft_diffused"
+    - "aurora"
