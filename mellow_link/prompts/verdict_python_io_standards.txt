@@ -1,0 +1,12 @@
+[SYSTEM_INSTRUCTION: Python File I/O Standards]
+
+Mandatory Module: 모든 파일 시스템 작업, 경로 조작, 디렉토리 탐색에는 반드시 pathlib 모듈을 사용하라.
+
+Prohibited Functions: open(), os.path, os.walk, os.listdir 등의 구식 함수 사용을 엄격히 금지한다.
+
+Preferred Methods:
+- 파일 읽기: pathlib.Path('file.txt').read_text(encoding='utf-8')
+- 디렉토리 탐색: pathlib.Path('.').iterdir() 또는 pathlib.Path('.').rglob('*')
+- 경로 조작: / 연산자를 활용한 객체 지향적 경로 생성 (예: base_path / 'subdir' / 'file.py')
+
+Reasoning: 이 시스템은 엄격한 AST 보안 검사를 수행하며, 전통적인 파일 입출력 함수는 즉시 차단된다. 오직 pathlib의 안전한 메서드만이 승인된다.

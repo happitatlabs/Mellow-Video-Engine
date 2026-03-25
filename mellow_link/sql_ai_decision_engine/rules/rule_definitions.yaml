@@ -1,0 +1,27 @@
+rules:
+  - id: R001
+    name: 환불 급증
+    metric: refund_rate
+    operator: ">"
+    threshold: 0.07
+    score: 30
+    severity: high
+    message: "환불률이 기준치를 초과했습니다."
+
+  - id: R002
+    name: 문의량 증가
+    metric: inquiry_growth
+    operator: ">"
+    threshold: 0.15
+    score: 20
+    severity: medium
+    message: "문의량 증가가 감지되었습니다."
+
+  - id: R003
+    name: 이탈률 상승
+    metric: churn_rate
+    operator: ">"
+    threshold: 0.08
+    score: 25
+    severity: high
+    message: "이탈률이 기준치를 초과했습니다."

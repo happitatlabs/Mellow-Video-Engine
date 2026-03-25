@@ -1,0 +1,640 @@
+{
+  "project_id": "3475d0be-f74f-4b2e-8d63-27720fc6d4f2",
+  "project_name": "언니의 손수건 3",
+  "created_at": "2026-01-27T02:06:33.426963",
+  "updated_at": "2026-01-27T02:10:24.779347",
+  "audio_file_path": "C:\\Users\\Hyein\\AppData\\Local\\Temp\\gradio\\b2c59aee5111aced6741d9637e1a8240ff3ea00d6f13f1ad309ece4fc402fb87\\언니의 손수건 3.mp3",
+  "audio_duration": 183.639979,
+  "lyrics_segments": [
+    {
+      "id": "6b977449",
+      "text": "새로운 나의 바람은 진짜 언니가 되는 일",
+      "start_time": 13.49,
+      "end_time": 18.85,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "9a25f889",
+      "text": "해마다 마음 깊은 곳에",
+      "start_time": 20.61,
+      "end_time": 24.13,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "a44c5db9",
+      "text": "조심히 접어두었던 손수건 한 장을",
+      "start_time": 26.62,
+      "end_time": 30.86,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "9be84cba",
+      "text": "받아 드는 일",
+      "start_time": 32.5,
+      "end_time": 35.02,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "b8b694a9",
+      "text": "언니란 한 사람의 영혼을 오래도록 품어주는 이름",
+      "start_time": 39.3,
+      "end_time": 43.52,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "2600ebcf",
+      "text": "슬그머니 다가와 젖은 마음을 닦아내는 투명한 위로",
+      "start_time": 45.88,
+      "end_time": 50.18,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "a88ad9d2",
+      "text": "말을 다듬지 않아도 위로를 서두르지 않아도 비워낸 마음 위로 조용히 닿는 온기",
+      "start_time": 53.96,
+      "end_time": 65.96,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "f95616d3",
+      "text": "크지 않아도",
+      "start_time": 74.82,
+      "end_time": 77.07,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "fb4d8fe6",
+      "text": "곁에 남는 이유",
+      "start_time": 77.55,
+      "end_time": 97.89,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "57608c24",
+      "text": "않는 진심의 온도",
+      "start_time": 119.68,
+      "end_time": 125.76,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "16b7251c",
+      "text": "오늘도 천천히 꿰매어 본다",
+      "start_time": 150.17,
+      "end_time": 153.72,
+      "confidence": 1.0,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    }
+  ],
+  "images": {
+    "0": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_000.png"
+    },
+    "1": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_001.png"
+    },
+    "2": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_002.png"
+    },
+    "3": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_003.png"
+    },
+    "4": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_004.png"
+    },
+    "5": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_005.png"
+    },
+    "6": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_006.png"
+    },
+    "7": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_007.png"
+    },
+    "8": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_008.png"
+    },
+    "9": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_009.png"
+    },
+    "10": {
+      "path": "D:\\Mellow-Video-Engine\\assets\\generated_images\\scene_010.png"
+    }
+  },
+  "video_clips": {},
+  "final_video_path": null,
+  "metadata": {
+    "title": "언니의 손수건 3",
+    "artist": "",
+    "song_title": "언니의 손수건",
+    "lyricist": "",
+    "composer": "",
+    "mood": "따뜻함, 그리움",
+    "story_description": "",
+    "translations": {}
+  },
+  "current_state": "VISUAL_REVIEW",
+  "state_history": [
+    {
+      "from": "INIT",
+      "to": "AUDIO_ANALYSIS",
+      "timestamp": "2026-01-27T02:06:33.546076",
+      "details": {
+        "trigger": "start"
+      }
+    },
+    {
+      "from": "AUDIO_ANALYSIS",
+      "to": "AUDIO_REVIEW",
+      "timestamp": "2026-01-27T02:06:39.530605",
+      "details": {
+        "trigger": "analysis_complete"
+      }
+    },
+    {
+      "from": "AUDIO_REVIEW",
+      "to": "VISUAL_SCRIPTING",
+      "timestamp": "2026-01-27T02:09:19.686011",
+      "details": {
+        "trigger": "lyrics_confirmed"
+      }
+    },
+    {
+      "from": "VISUAL_SCRIPTING",
+      "to": "VISUAL_SCRIPTING_REVIEW",
+      "timestamp": "2026-01-27T02:10:10.397491",
+      "details": {
+        "trigger": "scripting_complete"
+      }
+    },
+    {
+      "from": "VISUAL_SCRIPTING_REVIEW",
+      "to": "VISUAL_RENDERING",
+      "timestamp": "2026-01-27T02:10:24.431024",
+      "details": {
+        "trigger": "prompts_confirmed"
+      }
+    },
+    {
+      "from": "VISUAL_RENDERING",
+      "to": "VISUAL_REVIEW",
+      "timestamp": "2026-01-27T02:10:24.779347",
+      "details": {
+        "trigger": "rendering_complete"
+      }
+    }
+  ],
+  "scene_plans": [
+    {
+      "visual_prompt": "A lone guitarist performing on a dark stage with spotlights illuminating their face.",
+      "negative_prompt": "Avoid showing other band members or audience, keep focus on solo performance",
+      "camera_movement": "pan_left",
+      "lighting": "golden_hour",
+      "scene_summary": "Guitarist performs under spotlight, capturing the essence of a powerful solo act.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "6b977449",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist performing on a dark stage with spotlights illuminating their face.\",\"negative_prompt\":\"Avoid showing other band members or audience, keep focus on solo performance\",\"camera_movement\":\"pan_left\",\"lighting\":\"golden_hour\",\"scene_summary\":\"Guitarist performs under spotlight, capturing the essence of a powerful solo act.\"}"
+    },
+    {
+      "visual_prompt": "A close-up of a guitarist playing an electric guitar with intense emotion.",
+      "negative_prompt": "Avoid showing any other band members or instruments.",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Guitarist's passionate performance",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "9a25f889",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A close-up of a guitarist playing an electric guitar with intense emotion.\",\"negative_prompt\":\"Avoid showing any other band members or instruments.\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Guitarist's passionate performance\"}"
+    },
+    {
+      "visual_prompt": "A band performing on a dimly lit stage with spotlights hitting each member.",
+      "negative_prompt": "Avoid overly bright lighting, no crowd shots, no close-ups of instruments alone",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Band members perform under intense spotlight, creating a powerful visual.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "a44c5db9",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A band performing on a dimly lit stage with spotlights hitting each member.\",\"negative_prompt\":\"Avoid overly bright lighting, no crowd shots, no close-ups of instruments alone\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Band members perform under intense spotlight, creating a powerful visual.\"}"
+    },
+    {
+      "visual_prompt": "A lone guitarist performing on a wooden bridge at twilight",
+      "negative_prompt": "Avoid including other people, vehicles or buildings in the background",
+      "camera_movement": "pan_right",
+      "lighting": "golden_hour",
+      "scene_summary": "Guitarist playing under warm sunset lighting",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "9be84cba",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist performing on a wooden bridge at twilight\",\"negative_prompt\":\"Avoid including other people, vehicles or buildings in the background\",\"camera_movement\":\"pan_right\",\"lighting\":\"golden_hour\",\"scene_summary\":\"Guitarist playing under warm sunset lighting\"}"
+    },
+    {
+      "visual_prompt": "A solitary figure standing in a dimly lit room, playing a piano with intense emotion, the keys illuminated by a single spotlight.",
+      "negative_prompt": "Avoid showing other people, avoid bright lighting, avoid colorful background",
+      "camera_movement": "static",
+      "lighting": "soft",
+      "scene_summary": "Solo musician expressing deep emotions through piano playing",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "b8b694a9",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A solitary figure standing in a dimly lit room, playing a piano with intense emotion, the keys illuminated by a single spotlight.\", \"negative_prompt\":\"Avoid showing other people, avoid bright lighting, avoid colorful background\", \"camera_movement\":\"static\", \"lighting\":\"soft\", \"scene_summary\":\"Solo musician expressing deep emotions through piano playing\"}"
+    },
+    {
+      "visual_prompt": "A lone figure walking through a forest at sunset",
+      "negative_prompt": "Avoid showing other people, keep focus on the figure alone",
+      "camera_movement": "pan_right",
+      "lighting": "golden_hour",
+      "scene_summary": "The scene captures a solitary walker in a serene forest during the golden hour, highlighting the beauty of nature and solitude.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "2600ebcf",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone figure walking through a forest at sunset\",\"negative_prompt\":\"Avoid showing other people, keep focus on the figure alone\",\"camera_movement\":\"pan_right\",\"lighting\":\"golden_hour\",\"scene_summary\":\"The scene captures a solitary walker in a serene forest during the golden hour, highlighting the beauty of nature and solitude.\"}"
+    },
+    {
+      "visual_prompt": "A lone guitarist playing on a desolate street under the moonlight.",
+      "negative_prompt": "Avoid showing people, avoid colorful elements, avoid daytime lighting",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Guitarist performs in an empty urban setting during twilight",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "a88ad9d2",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist playing on a desolate street under the moonlight.\",\"negative_prompt\":\"Avoid showing people, avoid colorful elements, avoid daytime lighting\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Guitarist performs in an empty urban setting during twilight\"}"
+    },
+    {
+      "visual_prompt": "A character standing in a futuristic cityscape under neon lights",
+      "negative_prompt": "Avoid human characters, use only CGI elements",
+      "camera_movement": "pan_right",
+      "lighting": "neon",
+      "scene_summary": "The camera pans right across the glowing city, highlighting reflective surfaces",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "f95616d3",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A character standing in a futuristic cityscape under neon lights\",\"negative_prompt\":\"Avoid human characters, use only CGI elements\",\"camera_movement\":\"pan_right\",\"lighting\":\"neon\",\"scene_summary\":\"The camera pans right across the glowing city, highlighting reflective surfaces\"}"
+    },
+    {
+      "visual_prompt": "A male artist performs a live acoustic guitar performance under moonlight in an abandoned warehouse.",
+      "negative_prompt": "Avoid showing people, close-ups of instruments, background noise",
+      "camera_movement": "pan_right",
+      "lighting": "soft",
+      "scene_summary": "Artist plays guitar in serene, illuminated setting",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "fb4d8fe6",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A male artist performs a live acoustic guitar performance under moonlight in an abandoned warehouse.\",\"negative_prompt\":\"Avoid showing people, close-ups of instruments, background noise\",\"camera_movement\":\"pan_right\",\"lighting\":\"soft\",\"scene_summary\":\"Artist plays guitar in serene, illuminated setting\"}"
+    },
+    {
+      "visual_prompt": "Band performing on a stage under a starry sky",
+      "negative_prompt": "Avoid including people, keep lighting natural",
+      "camera_movement": "pan_right",
+      "lighting": "natural_stars",
+      "scene_summary": "The band performs amidst twinkling stars",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "57608c24",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\": \"Band performing on a stage under a starry sky\", \"negative_prompt\": \"Avoid including people, keep lighting natural\", \"camera_movement\": \"pan_right\", \"lighting\": \"natural_stars\", \"scene_summary\": \"The band performs amidst twinkling stars\"}"
+    },
+    {
+      "visual_prompt": "A band performing a powerful rock song on stage under harsh spotlights.",
+      "negative_prompt": "Avoid close-ups of individual band members, soft lighting, or slow camera movements.",
+      "camera_movement": "pan_left",
+      "lighting": "harsh_spotlights",
+      "scene_summary": "The band performs energetically with dramatic lighting and dynamic camera movement.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "16b7251c",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A band performing a powerful rock song on stage under harsh spotlights.\",\"negative_prompt\":\"Avoid close-ups of individual band members, soft lighting, or slow camera movements.\",\"camera_movement\":\"pan_left\",\"lighting\":\"harsh_spotlights\",\"scene_summary\":\"The band performs energetically with dramatic lighting and dynamic camera movement.\"}"
+    }
+  ],
+  "visual_plans": [
+    {
+      "visual_prompt": "A lone guitarist performing on a dark stage with spotlights illuminating their face.",
+      "negative_prompt": "Avoid showing other band members or audience, keep focus on solo performance",
+      "camera_movement": "pan_left",
+      "lighting": "golden_hour",
+      "scene_summary": "Guitarist performs under spotlight, capturing the essence of a powerful solo act.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "6b977449",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist performing on a dark stage with spotlights illuminating their face.\",\"negative_prompt\":\"Avoid showing other band members or audience, keep focus on solo performance\",\"camera_movement\":\"pan_left\",\"lighting\":\"golden_hour\",\"scene_summary\":\"Guitarist performs under spotlight, capturing the essence of a powerful solo act.\"}"
+    },
+    {
+      "visual_prompt": "A close-up of a guitarist playing an electric guitar with intense emotion.",
+      "negative_prompt": "Avoid showing any other band members or instruments.",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Guitarist's passionate performance",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "9a25f889",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A close-up of a guitarist playing an electric guitar with intense emotion.\",\"negative_prompt\":\"Avoid showing any other band members or instruments.\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Guitarist's passionate performance\"}"
+    },
+    {
+      "visual_prompt": "A band performing on a dimly lit stage with spotlights hitting each member.",
+      "negative_prompt": "Avoid overly bright lighting, no crowd shots, no close-ups of instruments alone",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Band members perform under intense spotlight, creating a powerful visual.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "a44c5db9",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A band performing on a dimly lit stage with spotlights hitting each member.\",\"negative_prompt\":\"Avoid overly bright lighting, no crowd shots, no close-ups of instruments alone\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Band members perform under intense spotlight, creating a powerful visual.\"}"
+    },
+    {
+      "visual_prompt": "A lone guitarist performing on a wooden bridge at twilight",
+      "negative_prompt": "Avoid including other people, vehicles or buildings in the background",
+      "camera_movement": "pan_right",
+      "lighting": "golden_hour",
+      "scene_summary": "Guitarist playing under warm sunset lighting",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "9be84cba",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist performing on a wooden bridge at twilight\",\"negative_prompt\":\"Avoid including other people, vehicles or buildings in the background\",\"camera_movement\":\"pan_right\",\"lighting\":\"golden_hour\",\"scene_summary\":\"Guitarist playing under warm sunset lighting\"}"
+    },
+    {
+      "visual_prompt": "A solitary figure standing in a dimly lit room, playing a piano with intense emotion, the keys illuminated by a single spotlight.",
+      "negative_prompt": "Avoid showing other people, avoid bright lighting, avoid colorful background",
+      "camera_movement": "static",
+      "lighting": "soft",
+      "scene_summary": "Solo musician expressing deep emotions through piano playing",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "b8b694a9",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A solitary figure standing in a dimly lit room, playing a piano with intense emotion, the keys illuminated by a single spotlight.\", \"negative_prompt\":\"Avoid showing other people, avoid bright lighting, avoid colorful background\", \"camera_movement\":\"static\", \"lighting\":\"soft\", \"scene_summary\":\"Solo musician expressing deep emotions through piano playing\"}"
+    },
+    {
+      "visual_prompt": "A lone figure walking through a forest at sunset",
+      "negative_prompt": "Avoid showing other people, keep focus on the figure alone",
+      "camera_movement": "pan_right",
+      "lighting": "golden_hour",
+      "scene_summary": "The scene captures a solitary walker in a serene forest during the golden hour, highlighting the beauty of nature and solitude.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "2600ebcf",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone figure walking through a forest at sunset\",\"negative_prompt\":\"Avoid showing other people, keep focus on the figure alone\",\"camera_movement\":\"pan_right\",\"lighting\":\"golden_hour\",\"scene_summary\":\"The scene captures a solitary walker in a serene forest during the golden hour, highlighting the beauty of nature and solitude.\"}"
+    },
+    {
+      "visual_prompt": "A lone guitarist playing on a desolate street under the moonlight.",
+      "negative_prompt": "Avoid showing people, avoid colorful elements, avoid daytime lighting",
+      "camera_movement": "static",
+      "lighting": "dramatic",
+      "scene_summary": "Guitarist performs in an empty urban setting during twilight",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "a88ad9d2",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A lone guitarist playing on a desolate street under the moonlight.\",\"negative_prompt\":\"Avoid showing people, avoid colorful elements, avoid daytime lighting\",\"camera_movement\":\"static\",\"lighting\":\"dramatic\",\"scene_summary\":\"Guitarist performs in an empty urban setting during twilight\"}"
+    },
+    {
+      "visual_prompt": "A character standing in a futuristic cityscape under neon lights",
+      "negative_prompt": "Avoid human characters, use only CGI elements",
+      "camera_movement": "pan_right",
+      "lighting": "neon",
+      "scene_summary": "The camera pans right across the glowing city, highlighting reflective surfaces",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "f95616d3",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A character standing in a futuristic cityscape under neon lights\",\"negative_prompt\":\"Avoid human characters, use only CGI elements\",\"camera_movement\":\"pan_right\",\"lighting\":\"neon\",\"scene_summary\":\"The camera pans right across the glowing city, highlighting reflective surfaces\"}"
+    },
+    {
+      "visual_prompt": "A male artist performs a live acoustic guitar performance under moonlight in an abandoned warehouse.",
+      "negative_prompt": "Avoid showing people, close-ups of instruments, background noise",
+      "camera_movement": "pan_right",
+      "lighting": "soft",
+      "scene_summary": "Artist plays guitar in serene, illuminated setting",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "fb4d8fe6",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A male artist performs a live acoustic guitar performance under moonlight in an abandoned warehouse.\",\"negative_prompt\":\"Avoid showing people, close-ups of instruments, background noise\",\"camera_movement\":\"pan_right\",\"lighting\":\"soft\",\"scene_summary\":\"Artist plays guitar in serene, illuminated setting\"}"
+    },
+    {
+      "visual_prompt": "Band performing on a stage under a starry sky",
+      "negative_prompt": "Avoid including people, keep lighting natural",
+      "camera_movement": "pan_right",
+      "lighting": "natural_stars",
+      "scene_summary": "The band performs amidst twinkling stars",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "57608c24",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\": \"Band performing on a stage under a starry sky\", \"negative_prompt\": \"Avoid including people, keep lighting natural\", \"camera_movement\": \"pan_right\", \"lighting\": \"natural_stars\", \"scene_summary\": \"The band performs amidst twinkling stars\"}"
+    },
+    {
+      "visual_prompt": "A band performing a powerful rock song on stage under harsh spotlights.",
+      "negative_prompt": "Avoid close-ups of individual band members, soft lighting, or slow camera movements.",
+      "camera_movement": "pan_left",
+      "lighting": "harsh_spotlights",
+      "scene_summary": "The band performs energetically with dramatic lighting and dynamic camera movement.",
+      "camera_speed": "slow",
+      "color_palette": [],
+      "mood": "neutral",
+      "environment": "nature",
+      "weather": "clear",
+      "time_of_day": "day",
+      "abstract_level": null,
+      "segment_id": "16b7251c",
+      "is_instrumental": false,
+      "generation_attempt": 2,
+      "raw_response": "{\"visual_prompt\":\"A band performing a powerful rock song on stage under harsh spotlights.\",\"negative_prompt\":\"Avoid close-ups of individual band members, soft lighting, or slow camera movements.\",\"camera_movement\":\"pan_left\",\"lighting\":\"harsh_spotlights\",\"scene_summary\":\"The band performs energetically with dramatic lighting and dynamic camera movement.\"}"
+    }
+  ]
+}

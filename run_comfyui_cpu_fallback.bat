@@ -10,7 +10,25 @@ REM
 REM Recommended: Check for PyTorch updates regularly.
 REM ============================================================================
 
-cd /d "%~dp0ComfyUI"
+REM Prefer external ComfyUI location (junction/clone)
+REM - Set MELLOW_COMFYUI_DIR to an absolute path of ComfyUI root.
+REM - If not set, fall back to ./ComfyUI next to this script.
+if defined MELLOW_COMFYUI_DIR (
+    cd /d "%MELLOW_COMFYUI_DIR%"
+) else (
+    cd /d "%~dp0ComfyUI"
+)
+
+if not exist "main.py" (
+    echo.
+    echo [ERROR] ComfyUI not found.
+    echo - Set MELLOW_COMFYUI_DIR to your external ComfyUI folder, or
+    echo - Create a junction ./ComfyUI pointing to it.
+    echo Current dir: %CD%
+    echo.
+    pause
+    exit /b 1
+)
 
 REM Activate the ComfyUI venv if it exists
 if exist "venv\Scripts\activate.bat" (

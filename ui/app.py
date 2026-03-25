@@ -1,4 +1,9 @@
 """
+DEPRECATED LEGACY UI
+====================
+This Textual UI is retained for reference only.
+The maintained product entry points are `web_ui.py` and `api_server.py`.
+
 Mellow-Video-Engine TUI Application
 ====================================
 Textual 기반 터미널 UI 애플리케이션.
@@ -8,7 +13,7 @@ Human-in-the-loop 인터페이스로 비디오 생성 파이프라인을 제어�
 Backend Integration:
 - LyricAligner: faster-whisper 기반 가사 추출
 - VideoComposer: ffmpeg-python 기반 비디오 합성
-- ComfyVideoAgent: ComfyUI API 통신
+- VideoService/ImageService: ComfyUI API 통신
 """
 
 from __future__ import annotations
@@ -17,7 +22,12 @@ import asyncio
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict
+
+# MellowApp 코드 내부
+from mellow_link.core.schemas import VideoRequest, ImageRequest
+from mellow_link.services.video_service import VideoService
+from mellow_link.services.image_service import ImageService
 
 from textual import on, work
 from textual.app import App, ComposeResult
@@ -40,12 +50,6 @@ from .widgets.workflow_browser import WorkflowBrowser
 from .widgets.param_editor import ParamEditor
 from .screens.execution_screen import ExecutionScreen
 from .lyric_editor import LyricEditorWidget, LyricEditorScreen
-
-if TYPE_CHECKING:
-    from modules.visual_planner import VisualPlanner
-    from modules.comfy_video_agent import ComfyVideoAgent, ComfyConfig
-    from backend.audio_engine import LyricAligner
-    from backend.video_engine import VideoComposer
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +163,17 @@ class MainContent(Container):
                 yield ParamEditor(id="param-editor")
             with TabPane("Logs", id="tab-logs"):
                 yield RichLog(id="main-log", highlight=True, markup=True)
-            with TabPane("Preview", id="tab-preview"):
+            with TabPane("Final Export & Preview", id="tab-preview"):
+                # TUI에서 영상 자체를 렌더링하긴 어렵기 때문에,
+                # "최종 검수실"로서 최신 결과물 경로/상태를 크게 보여주고 즉시 열 수 있게 한다.
                 yield Static(
-                    "[dim]Select a video file to preview[/dim]",
-                    id="preview-placeholder",
+                    "[dim]아직 최종 결과물이 없습니다.[/dim]\n\n"
+                    "1) Clips 생성\n"
+                    "2) Render Video\n\n"
+                    "완료 후 이 탭에서 최종 파일을 바로 열 수 있습니다.",
+                    id="final-preview",
                 )
+                yield Button("Open Latest Export", id="btn-open-latest-export", variant="primary", disabled=True)
 
 
 # =============================================================================
@@ -189,13 +199,19 @@ class ControlPanel(Container):
                 disabled=True,
             )
             yield Button(
-                "3. Generate Clips",
+                "3. Generate Images",
+                id="btn-generate-images",
+                variant="warning",
+                disabled=True,
+            )
+            yield Button(
+                "4. Generate Clips",
                 id="btn-generate",
                 variant="warning",
                 disabled=True,
             )
             yield Button(
-                "4. Render Video",
+                "5. Render Video",
                 id="btn-render",
                 variant="success",
                 disabled=True,
@@ -402,17 +418,20 @@ class MellowApp(App):
         self.initial_audio = Path(initial_audio) if initial_audio else None
 
         # 백엔드 컴포넌트
+        self.video_service: Optional[VideoService] = None
+        self.image_service: Optional[ImageService] = None
         self.lyric_aligner: Optional["LyricAligner"] = None
-        self.video_composer: Optional["VideoComposer"] = None
         self.visual_planner: Optional["VisualPlanner"] = None
-        self.comfy_agent: Optional["ComfyVideoAgent"] = None
-        self.comfy_config = None
+        self.video_composer: Optional["VideoComposer"] = None
 
         # 파이프라인 데이터
         self.lyrics_segments: List[Dict[str, Any]] = []
         self.scene_plans: List[Dict[str, Any]] = []
+        self.generated_images: List[Path] = []
         self.generated_clips: List[Path] = []
         self.workflow_data: dict = {}
+        self.latest_export_path: Optional[Path] = None
+        self._button_default_labels: Dict[str, str] = {}
 
         # 로깅 핸들러
         self._log_handler: Optional[TUILogHandler] = None
@@ -443,6 +462,14 @@ class MellowApp(App):
         # 백엔드 초기화
         self._init_backends()
 
+        # 버튼 기본 라벨 스냅샷 (UX 피드백용)
+        try:
+            for bid in ("#btn-generate-images", "#btn-generate", "#btn-render"):
+                btn = self.query_one(bid, Button)
+                self._button_default_labels[bid] = str(btn.label)
+        except Exception:
+            pass
+
         # 초기 오디오 파일 로드 (CLI에서 전달된 경우)
         if self.initial_audio and self.initial_audio.exists():
             self._log(f"Loading initial audio: {self.initial_audio.name}")
@@ -451,20 +478,63 @@ class MellowApp(App):
         # 초기 상태 업데이트
         self._update_stats()
 
+        # Final Export & Preview: outputs/final/ 폴더 모니터링 (폴링)
+        try:
+            self.set_interval(2.0, self._poll_final_exports)
+        except Exception:
+            pass
+
+    def _poll_final_exports(self) -> None:
+        """
+        (CRITICAL) 최종 검수실 경로 동기화:
+        outputs/final/ 폴더에서 최신 mp4를 찾아 UI를 자동 갱신한다.
+        """
+        try:
+            final_dir = Path("outputs") / "final"
+            if not final_dir.exists():
+                return
+            candidates = list(final_dir.glob("*.mp4"))
+            if not candidates:
+                return
+            latest = max(candidates, key=lambda p: p.stat().st_mtime)
+            if self.latest_export_path and Path(self.latest_export_path).resolve() == latest.resolve():
+                return
+            self._set_final_export(latest)
+        except Exception:
+            return
+
     def _init_backends(self) -> None:
         """백엔드 컴포넌트 초기화."""
+        # 1) New engine services (required for image/video generation)
         try:
-            from backend.audio_engine import LyricAligner
-            from backend.video_engine import VideoComposer
+            self.video_service = VideoService(
+                host="127.0.0.1",
+                port=8188,
+                output_dir=self.output_dir / "videos",
+            )
+            self.image_service = ImageService(
+                host="127.0.0.1",
+                port=8188,
+                output_dir=self.output_dir / "images",
+            )
+            self._log("Mellow-Link Services (Video/Image) initialized", "success")
+        except Exception as e:
+            self.video_service = None
+            self.image_service = None
+            self._log(f"Service init error: {e}", "error")
+
+        # 2) Legacy components (optional)
+        try:
+            from OLD_backend.audio_engine import LyricAligner  # type: ignore
+            from OLD_backend.video_engine import VideoComposer  # type: ignore
 
             self.lyric_aligner = LyricAligner(device="cuda", compute_type="float16")
             self.video_composer = VideoComposer()
-
-            self._log("Backend engines initialized", "success")
-        except ImportError as e:
-            self._log(f"Backend import error: {e}", "warning")
+            self._log("Legacy backend (LyricAligner/VideoComposer) initialized", "success")
         except Exception as e:
-            self._log(f"Backend init error: {e}", "error")
+            self.lyric_aligner = None
+            self.video_composer = None
+            self._log(f"Legacy backend unavailable: {e}", "warning")
 
     def _setup_logging(self) -> None:
         """TUI 로그 핸들러 설정."""
@@ -472,6 +542,9 @@ class MellowApp(App):
         self._log_handler.setLevel(logging.INFO)
 
         root_logger = logging.getLogger()
+        # 서비스(mellow_link) 로그가 INFO 레벨로도 흐르도록 루트 레벨을 올린다.
+        if root_logger.level > logging.INFO:
+            root_logger.setLevel(logging.INFO)
         root_logger.addHandler(self._log_handler)
 
     def _log(self, message: str, level: str = "info") -> None:
@@ -486,6 +559,53 @@ class MellowApp(App):
                 log_widget.write(f"[green][OK][/green] {message}")
             else:
                 log_widget.write(f"[dim][INFO][/dim] {message}")
+        except Exception:
+            pass
+
+    # =========================================================================
+    # UX Feedback Helpers (Buttons / Preview)
+    # =========================================================================
+
+    def _set_button_feedback(self, button_id: str, *, busy: bool, percent: Optional[float] = None) -> None:
+        """
+        ✅ verified:
+          - 클릭 즉시 disabled
+          - 라벨을 "Generating... (0%)" 형태로 갱신
+        """
+        try:
+            btn = self.query_one(button_id, Button)
+            if busy:
+                btn.disabled = True
+                pct = int(max(0.0, min(100.0, float(percent or 0.0))))
+                btn.label = f"Generating... ({pct}%)"
+            else:
+                # 기본 라벨 복구
+                btn.label = self._button_default_labels.get(button_id, str(btn.label))
+                btn.disabled = False
+        except Exception:
+            pass
+
+    def _set_final_export(self, path: Path) -> None:
+        """Final Export & Preview 탭에 최신 결과물을 표시."""
+        self.latest_export_path = Path(path)
+        try:
+            preview = self.query_one("#final-preview", Static)
+            preview.update(
+                "\n".join(
+                    [
+                        "[bold]최종 검수실[/bold]",
+                        "",
+                        f"[green]Latest Export:[/green] {self.latest_export_path.name}",
+                        str(self.latest_export_path),
+                        "",
+                        "[dim]Open Latest Export 버튼으로 바로 재생하세요.[/dim]",
+                    ]
+                )
+            )
+            btn = self.query_one("#btn-open-latest-export", Button)
+            btn.disabled = False
+            tabs = self.query_one("#main-tabs", TabbedContent)
+            tabs.active = "tab-preview"
         except Exception:
             pass
 
@@ -510,6 +630,7 @@ class MellowApp(App):
             f"Audio: {self.current_audio.name if self.current_audio else 'None'}",
             f"Lyrics: {len(self.lyrics_segments)} segments",
             f"Scenes: {len(self.scene_plans)} planned",
+            f"Images: {len(self.generated_images)} generated",
             f"Clips: {len(self.generated_clips)} generated",
             f"ComfyUI: {'Connected' if self.is_connected else 'Disconnected'}",
         ]
@@ -519,6 +640,7 @@ class MellowApp(App):
         """파이프라인 버튼 상태 업데이트."""
         btn_transcribe = self.query_one("#btn-transcribe", Button)
         btn_plan = self.query_one("#btn-plan", Button)
+        btn_generate_images = self.query_one("#btn-generate-images", Button)
         btn_generate = self.query_one("#btn-generate", Button)
         btn_render = self.query_one("#btn-render", Button)
         btn_cancel = self.query_one("#btn-cancel", Button)
@@ -536,7 +658,10 @@ class MellowApp(App):
         # Plan: 가사 있을 때만
         btn_plan.disabled = is_busy or len(self.lyrics_segments) == 0
 
-        # Generate: 장면 기획 있고 ComfyUI 연결됐을 때만
+        # Generate Images: 장면 기획 있고 연결됐을 때만
+        btn_generate_images.disabled = is_busy or len(self.scene_plans) == 0 or not self.is_connected
+
+        # Generate Clips: 장면 기획 있고 연결됐을 때만
         btn_generate.disabled = is_busy or len(self.scene_plans) == 0 or not self.is_connected
 
         # Render: 클립 있을 때만
@@ -609,21 +734,38 @@ class MellowApp(App):
     def on_generate_pressed(self) -> None:
         """Generate Clips 버튼."""
         if self.scene_plans and self.is_connected:
+            # ✅ verified: 즉시 UX 피드백
+            self._set_button_feedback("#btn-generate", busy=True, percent=0.0)
             self._run_clip_generation()
+
+    @on(Button.Pressed, "#btn-generate-images")
+    def on_generate_images_pressed(self) -> None:
+        """Generate Images 버튼."""
+        if self.scene_plans and self.is_connected:
+            # ✅ verified: 즉시 UX 피드백
+            self._set_button_feedback("#btn-generate-images", busy=True, percent=0.0)
+            self._run_image_generation()
 
     @on(Button.Pressed, "#btn-render")
     def on_render_pressed(self) -> None:
         """Render Video 버튼."""
         if self.generated_clips:
+            self._set_button_feedback("#btn-render", busy=True, percent=0.0)
             self._run_video_render()
+
+    @on(Button.Pressed, "#btn-open-latest-export")
+    def on_open_latest_export_pressed(self) -> None:
+        """Final Export 열기."""
+        if self.latest_export_path and self.latest_export_path.exists():
+            self._play_video(self.latest_export_path)
 
     @on(Button.Pressed, "#btn-connect")
     def on_connect_pressed(self) -> None:
         """Connect/Disconnect 버튼."""
         if self.is_connected:
-            self._disconnect_comfy()
+            self._disconnect_services()
         else:
-            self._connect_comfy()
+            self._connect_services()
 
     @on(Button.Pressed, "#btn-free-vram")
     def on_free_vram_pressed(self) -> None:
@@ -720,8 +862,12 @@ class MellowApp(App):
     def action_quit(self) -> None:
         """앱 종료."""
         self._log("Shutting down...")
-        if self.comfy_agent:
-            self.comfy_agent.disconnect()
+        # best-effort: 서비스 연결 해제는 백그라운드로 처리
+        try:
+            if self.is_connected:
+                self._disconnect_services()
+        except Exception:
+            pass
         self.exit()
 
     def action_refresh(self) -> None:
@@ -749,8 +895,17 @@ class MellowApp(App):
         self._log("2. Transcribe -> Extract lyrics with timestamps")
         self._log("3. Edit lyrics in the Lyrics tab")
         self._log("4. Plan Scenes -> Generate visual plans from lyrics")
-        self._log("5. Generate Clips -> Create video clips via ComfyUI")
-        self._log("6. Render Video -> Combine clips with transitions")
+        self._log("5. Generate Images -> Create still images via ComfyUI")
+        self._log("6. Generate Clips -> Create video clips via ComfyUI (image -> video)")
+        self._log("7. Render Video -> Combine clips with transitions")
+
+    # =========================================================================
+    # Preview Helpers
+    # =========================================================================
+
+    def _set_preview_file(self, path: Path) -> None:
+        """(호환) 기존 Preview 업데이트는 Final Export & Preview로 위임."""
+        self._set_final_export(Path(path))
 
     # =========================================================================
     # Transcription (Thread-Safe)
@@ -841,66 +996,41 @@ class MellowApp(App):
     @work(exclusive=True, group="planning")
     async def _run_visual_planning(self) -> None:
         """비주얼 플래닝 실행."""
-        from modules.visual_planner import VisualPlanner, LLMConfig
+        from mellow_link.services.visual_planner import VisualPlanner, PlannerConfig
 
         self._update_status(AppState.PLANNING, "Planning scenes...", 0.0)
 
         try:
-            llm_config = LLMConfig(
-                provider="ollama",
-                base_url="http://localhost:11434",
-                model_name="llama3.1:8b",
-            )
-
-            prompts_config = {}
-            prompts_path = Path("config/prompts.yaml")
-            if prompts_path.exists():
-                import yaml
-                with open(prompts_path, "r", encoding="utf-8") as f:
-                    prompts_config = yaml.safe_load(f)
-
-            planner = VisualPlanner(
-                llm_config=llm_config,
-                prompts_config=prompts_config,
-                mock=True,  # TODO: 실제 사용 시 False
-            )
-            await planner.initialize()
-
-            # 세그먼트를 SegmentInfo 형식으로 변환
-            segments_for_planning = []
+            # lyrics_segments -> planner input
+            segments_for_planning: List[Dict[str, Any]] = []
             for i, seg in enumerate(self.lyrics_segments):
-                segments_for_planning.append({
-                    "id": str(i),
-                    "text": seg.get("text", ""),
-                    "start_time": seg.get("start", 0),
-                    "end_time": seg.get("end", 0),
-                    "confidence": seg.get("confidence", 1.0),
-                })
-
-            async def progress(current: int, total: int, plan) -> None:
-                progress_pct = (current / total) * 100
-                self._update_status(
-                    AppState.PLANNING,
-                    f"Planning scene {current}/{total}",
-                    progress_pct,
+                segments_for_planning.append(
+                    {
+                        "id": str(i),
+                        "text": seg.get("text", ""),
+                        "start_time": seg.get("start", 0),
+                        "end_time": seg.get("end", 0),
+                    }
                 )
 
-            scenes = await planner.plan_scenes(
-                segments=segments_for_planning,
-                global_mood="cinematic",
-                progress_callback=progress,
+            meta = {
+                "mood": "cinematic",
+                "story": "",
+            }
+
+            planner = VisualPlanner(config=PlannerConfig(max_scenes=20, width=1216, height=704))
+            # LLM이 살아있으면 시네마토그래퍼 페르소나로 plan_scenes_async가 우선 동작
+            self.scene_plans = await planner.plan_scenes_async(
+                lyrics_segments=segments_for_planning,
+                metadata=meta,
+                base_seed=None,
             )
 
-            self.scene_plans = [s.model_dump() if hasattr(s, 'model_dump') else s for s in scenes]
-
-            self._log(f"Planned {len(self.scene_plans)} scenes", "success")
+            self._log(f"Planned {len(self.scene_plans)} scenes (story/context enabled)", "success")
             self._update_status(AppState.IDLE, "Planning complete", 100.0)
             self._update_stats()
             self._update_pipeline_buttons()
-
             self.notify(f"Scene planning complete! {len(self.scene_plans)} scenes ready.")
-
-            await planner.cleanup()
 
         except Exception as e:
             self._log(f"Planning error: {e}", "error")
@@ -908,84 +1038,199 @@ class MellowApp(App):
             self.notify(f"Planning failed: {e}", severity="error")
 
     # =========================================================================
-    # Clip Generation (Thread-Safe)
+    # Image / Clip Generation (Service Route)
     # =========================================================================
 
-    @work(thread=True, exclusive=True, group="generation")
-    def _run_clip_generation(self) -> None:
-        """클립 생성 실행."""
-        from modules.comfy_video_agent import VideoGenerationParams, WorkflowType
-
-        if not self.comfy_agent or not self.scene_plans:
-            self.call_from_thread(self._log, "Not ready to generate", "error")
+    @work(exclusive=True, group="generation")
+    async def _run_image_generation(self) -> None:
+        """장면별 원본 이미지 생성."""
+        if not self.image_service or not self.scene_plans:
+            self._log("Not ready to generate images", "error")
+            self._set_button_feedback("#btn-generate-images", busy=False)
+            return
+        if not self.is_connected:
+            self._log("Not connected to ComfyUI", "error")
+            self._set_button_feedback("#btn-generate-images", busy=False)
             return
 
-        self.call_from_thread(
-            self._update_status,
-            AppState.GENERATING,
-            "Generating clips...",
-            0.0,
-        )
+        self._update_status(AppState.GENERATING, "Generating images...", 0.0)
+
+        self.generated_images = []
+        total = len(self.scene_plans)
+
+        try:
+            for i, scene in enumerate(self.scene_plans):
+                self._update_status(
+                    AppState.GENERATING,
+                    f"Generating image {i + 1}/{total}",
+                    (i / max(total, 1)) * 100,
+                )
+
+                static_desc = scene.get("static_scene_description") or scene.get("static_prompt") or scene.get("visual_prompt") or scene.get("prompt") or ""
+                shared = scene.get("shared_keywords") or ""
+                static_prompt = ", ".join([p for p in [str(static_desc).strip(), str(shared).strip()] if str(p).strip()])
+                negative = scene.get("negative_prompt") or ""
+                if not str(static_prompt).strip():
+                    self._log(f"Scene {i + 1}: missing static_prompt", "warning")
+                    continue
+
+                async def on_progress(progress: float, msg: str) -> None:
+                    # ✅ verified: 버튼 라벨에 실시간 퍼센트 반영 (전체 진행률)
+                    overall = ((i + (float(progress) / 100.0)) / max(total, 1)) * 100.0
+                    self._set_button_feedback("#btn-generate-images", busy=True, percent=overall)
+                    self._update_status(
+                        AppState.GENERATING,
+                        f"Image {i + 1}/{total}: {msg}",
+                        float(progress),
+                    )
+
+                req = ImageRequest(
+                    static_prompt=str(static_prompt).strip(),
+                    prompt=str(static_prompt).strip(),
+                    negative_prompt=str(negative) if negative else None,
+                    width=1216,
+                    height=704,
+                    steps=20,
+                    cfg_scale=7.0,
+                    seed=int(scene.get("seed", -1)) if scene.get("seed", None) is not None else -1,
+                    batch_size=1,
+                    model=None,
+                    workflow="flux_dev_api.json",
+                    sampler_name="euler",
+                    scheduler="normal",
+                    denoise=1.0,
+                )
+
+                img_path_str = await self.image_service.generate_image(req, on_progress=on_progress)
+                img_path = Path(img_path_str)
+                self.generated_images.append(img_path)
+                scene["image_path"] = str(img_path)
+                self._log(f"Image {i + 1} generated: {img_path.name}", "success")
+                self._set_final_export(img_path)
+
+            self._log(f"Image generation complete: {len(self.generated_images)} images", "success")
+            self._update_status(AppState.IDLE, "Image generation complete", 100.0)
+        except Exception as e:
+            self._log(f"Image generation error: {e}", "error")
+            self._update_status(AppState.ERROR, str(e))
+        finally:
+            self._set_button_feedback("#btn-generate-images", busy=False)
+            self._update_stats()
+            self._update_pipeline_buttons()
+
+    @work(exclusive=True, group="generation")
+    async def _run_clip_generation(self) -> None:
+        """클립 생성 실행 (VideoService Route)."""
+        if not self.video_service or not self.scene_plans:
+            self._log("Not ready to generate clips", "error")
+            self._set_button_feedback("#btn-generate", busy=False)
+            return
+        if not self.is_connected:
+            self._log("Not connected to ComfyUI", "error")
+            self._set_button_feedback("#btn-generate", busy=False)
+            return
+
+        self._update_status(AppState.GENERATING, "Generating clips...", 0.0)
 
         try:
             self.generated_clips = []
             total = len(self.scene_plans)
 
             for i, scene in enumerate(self.scene_plans):
-                self.call_from_thread(
-                    self._update_status,
+                self._update_status(
                     AppState.GENERATING,
                     f"Generating clip {i + 1}/{total}",
-                    (i / total) * 100,
+                    (i / max(total, 1)) * 100,
                 )
 
-                params = VideoGenerationParams(
-                    prompt=scene.get("visual_prompt", ""),
-                    negative_prompt=scene.get("negative_prompt", ""),
-                    num_frames=97,
-                    output_prefix=f"mellow_clip_{i:03d}",
-                    output_dir=self.output_dir,
-                )
+                static_desc = scene.get("static_scene_description") or scene.get("static_prompt") or scene.get("visual_prompt") or scene.get("prompt") or ""
+                dynamic_desc = scene.get("dynamic_action_description") or scene.get("motion_prompt") or ""
+                shared = scene.get("shared_keywords") or ""
+                static_prompt = ", ".join([p for p in [str(static_desc).strip(), str(shared).strip()] if str(p).strip()])
+                motion_prompt = ", ".join([p for p in [str(dynamic_desc).strip(), str(shared).strip()] if str(p).strip()])
+                negative = scene.get("negative_prompt") or ""
 
-                result = self.comfy_agent.generate_video(
-                    workflow_type=WorkflowType.LTX_VIDEO,
-                    params=params,
-                )
+                # 이미지가 없으면(버튼 생략/순서 어긋남) 자동으로 생성해 안전하게 진행
+                image_path = scene.get("image_path")
+                if not image_path:
+                    if not self.image_service:
+                        raise RuntimeError("ImageService not available, but image_path is missing")
+                    self._log(f"Scene {i + 1}: image_path missing -> generating image first", "warning")
 
-                if result.success and result.output_files:
-                    self.generated_clips.extend(result.output_files)
-                    self.call_from_thread(
-                        self._log,
-                        f"Clip {i + 1} generated: {result.output_files[0].name}",
-                        "success",
+                    async def on_img_progress(progress: float, msg: str) -> None:
+                        overall = ((i + (float(progress) / 100.0)) / max(total, 1)) * 100.0
+                        self._set_button_feedback("#btn-generate", busy=True, percent=overall)
+                        self._update_status(
+                            AppState.GENERATING,
+                            f"Auto image {i + 1}/{total}: {msg}",
+                            float(progress),
+                        )
+
+                    img_req = ImageRequest(
+                        static_prompt=str(static_prompt).strip(),
+                        prompt=str(static_prompt).strip(),
+                        negative_prompt=str(negative) if negative else None,
+                        width=1216,
+                        height=704,
+                        steps=20,
+                        cfg_scale=7.0,
+                        seed=int(scene.get("seed", -1)) if scene.get("seed", None) is not None else -1,
+                        batch_size=1,
+                        model=None,
+                        workflow="flux_dev_api.json",
+                        sampler_name="euler",
+                        scheduler="normal",
+                        denoise=1.0,
                     )
-                else:
-                    self.call_from_thread(
-                        self._log,
-                        f"Clip {i + 1} failed: {result.error_message}",
-                        "error",
+                    image_path = await self.image_service.generate_image(img_req, on_progress=on_img_progress)
+                    scene["image_path"] = str(image_path)
+                    p_img = Path(str(image_path))
+                    self.generated_images.append(p_img)
+                    self._set_final_export(p_img)
+
+                async def on_vid_progress(progress: float, msg: str) -> None:
+                    # VideoService progress는 best-effort (0~100)
+                    overall = ((i + (float(progress) / 100.0)) / max(total, 1)) * 100.0
+                    self._set_button_feedback("#btn-generate", busy=True, percent=overall)
+                    self._update_status(
+                        AppState.GENERATING,
+                        f"Clip {i + 1}/{total}: {msg}",
+                        float(progress),
                     )
 
-            self.call_from_thread(
-                self._log,
-                f"Generation complete: {len(self.generated_clips)} clips",
-                "success",
-            )
+                req = VideoRequest(
+                    image_path=str(image_path),
+                    motion_prompt=str(motion_prompt).strip() if motion_prompt else None,
+                    prompt=str(motion_prompt or static_prompt).strip(),
+                    mode="VIDEO_ONLY",          # ✅ verified
+                    motion_bucket_id=int(scene.get("motion_bucket_id", 127)),
+                    workflow="svd_xt_main.json",
+                    width=1216,
+                    height=704,
+                    target_duration=12.0,       # ✅ verified
+                    loop_mode="boomerang",
+                    overlap_seconds=0.35,
+                    fps=8,
+                )
 
-            self.call_from_thread(
-                self._update_status,
-                AppState.IDLE,
-                "Generation complete",
-                100.0,
-            )
+                out_path_str = await self.video_service.generate_video(req, on_progress=on_vid_progress)
+                out_path = Path(out_path_str)
+                self.generated_clips.append(out_path)
+
+                self._log(f"Clip {i + 1} generated: {out_path.name}", "success")
+                self._set_final_export(out_path)
+
+            self._log(f"Clip generation complete: {len(self.generated_clips)} clips", "success")
+            self._update_status(AppState.IDLE, "Clip generation complete", 100.0)
 
         except Exception as e:
-            self.call_from_thread(self._log, f"Generation error: {e}", "error")
-            self.call_from_thread(self._update_status, AppState.ERROR, str(e))
+            self._log(f"Clip generation error: {e}", "error")
+            self._update_status(AppState.ERROR, str(e))
 
         finally:
-            self.call_from_thread(self._update_stats)
-            self.call_from_thread(self._update_pipeline_buttons)
+            self._set_button_feedback("#btn-generate", busy=False)
+            self._update_stats()
+            self._update_pipeline_buttons()
 
     # =========================================================================
     # Video Rendering (Thread-Safe)
@@ -1028,6 +1273,8 @@ class MellowApp(App):
             output_path = self.output_dir / f"mellow_final_{self.current_audio.stem}.mp4"
 
             def progress_callback(progress: float, status: str) -> None:
+                # ✅ verified: Render 버튼 라벨에 진행률 표시
+                self.call_from_thread(self._set_button_feedback, "#btn-render", busy=True, percent=float(progress))
                 self.call_from_thread(
                     self._update_status,
                     AppState.RENDERING,
@@ -1063,6 +1310,9 @@ class MellowApp(App):
                     f"Video saved: {output_path.name}",
                 )
 
+                # Final Export & Preview 업데이트
+                self.call_from_thread(self._set_final_export, output_path)
+
                 # 브라우저 새로고침
                 browser = self.query_one("#workflow-browser", WorkflowBrowser)
                 self.call_from_thread(browser.reload)
@@ -1077,91 +1327,88 @@ class MellowApp(App):
             self.call_from_thread(self.notify, f"Render failed: {e}", severity="error")
 
         finally:
+            self.call_from_thread(self._set_button_feedback, "#btn-render", busy=False)
             self.call_from_thread(self._update_stats)
             self.call_from_thread(self._update_pipeline_buttons)
 
     # =========================================================================
-    # ComfyUI Connection (Thread-Safe)
+    # ComfyUI Connection (Service Route)
     # =========================================================================
 
-    @work(thread=True, exclusive=True, group="comfy")
-    def _connect_comfy(self) -> None:
-        """ComfyUI 연결."""
-        from modules.comfy_video_agent import ComfyVideoAgent, ComfyConfig
+    @work(exclusive=True, group="services")
+    async def _connect_services(self) -> None:
+        """ComfyUI 연결 (VideoService + ImageService)."""
+        if not self.video_service or not self.image_service:
+            self._log("Services not initialized", "error")
+            self._update_status(AppState.ERROR, "Services not initialized")
+            return
 
-        self.call_from_thread(
-            self._update_status,
-            AppState.IDLE,
-            "Connecting to ComfyUI...",
-        )
-
+        self._update_status(AppState.IDLE, "Connecting to ComfyUI...", 0.0)
         try:
-            self.comfy_config = ComfyConfig(
-                host="127.0.0.1",
-                port=8188,
-                ltx_workflow_path=self.workflows_dir / "ltx_video_api.json",
-                svd_workflow_path=self.workflows_dir / "svd_api.json",
-            )
-
-            self.comfy_agent = ComfyVideoAgent(self.comfy_config)
-            connected = self.comfy_agent.connect()
-
-            if connected:
-                self.call_from_thread(self._log, "Connected to ComfyUI", "success")
-                self.call_from_thread(setattr, self, "is_connected", True)
-            else:
-                self.call_from_thread(self._log, "Failed to connect", "error")
-                self.call_from_thread(self._update_status, AppState.ERROR, "Connection failed")
-
+            await self.image_service.connect()
+            await self.video_service.connect()
+            self.is_connected = True
+            self._log("Connected to ComfyUI (services)", "success")
+            self._update_status(AppState.CONNECTED, "Connected", 100.0)
         except Exception as e:
-            self.call_from_thread(self._log, f"Connection error: {e}", "error")
-            self.call_from_thread(self._update_status, AppState.ERROR, str(e))
+            self.is_connected = False
+            self._log(f"Service connection error: {e}", "error")
+            self._update_status(AppState.ERROR, str(e))
+        finally:
+            self._update_stats()
+            self._update_pipeline_buttons()
 
-    @work(thread=True, exclusive=True, group="comfy")
-    def _disconnect_comfy(self) -> None:
-        """ComfyUI 연결 해제."""
-        if self.comfy_agent:
-            try:
-                self.comfy_agent.disconnect()
-                self.call_from_thread(self._log, "Disconnected from ComfyUI")
-            except Exception as e:
-                self.call_from_thread(self._log, f"Disconnect error: {e}", "warning")
-            finally:
-                self.comfy_agent = None
+    @work(exclusive=True, group="services")
+    async def _disconnect_services(self) -> None:
+        """ComfyUI 연결 해제 (VideoService + ImageService)."""
+        self._update_status(AppState.IDLE, "Disconnecting...", 0.0)
+        try:
+            if self.video_service:
+                await self.video_service.disconnect()
+            if self.image_service:
+                await self.image_service.disconnect()
+            self.is_connected = False
+            self._log("Disconnected from ComfyUI (services)")
+            self._update_status(AppState.IDLE, "Disconnected", 0.0)
+        except Exception as e:
+            self._log(f"Disconnect error: {e}", "warning")
+            self.is_connected = False
+        finally:
+            self._update_stats()
+            self._update_pipeline_buttons()
 
-        self.call_from_thread(setattr, self, "is_connected", False)
+    @work(exclusive=True, group="services")
+    async def _free_vram(self) -> None:
+        """VRAM 정리 (서비스 + Whisper best-effort)."""
+        self._log("Freeing VRAM...")
+        try:
+            if self.image_service:
+                ok = await self.image_service.unload_model()
+                if ok:
+                    self._log("ComfyUI models unloaded (ImageService)", "success")
+                else:
+                    self._log("ComfyUI model unload skipped/failed", "warning")
+        except Exception as e:
+            self._log(f"ComfyUI VRAM free error: {e}", "warning")
 
-    @work(thread=True)
-    def _free_vram(self) -> None:
-        """VRAM 정리."""
-        self.call_from_thread(self._log, "Freeing VRAM...")
-
-        # ComfyUI VRAM 정리
-        if self.comfy_agent:
-            try:
-                self.comfy_agent._clear_vram()
-                self.call_from_thread(self._log, "ComfyUI VRAM freed", "success")
-            except Exception as e:
-                self.call_from_thread(self._log, f"ComfyUI VRAM error: {e}", "warning")
-
-        # LyricAligner VRAM 정리
         if self.lyric_aligner:
             try:
                 self.lyric_aligner._cleanup_vram()
-                self.call_from_thread(self._log, "Whisper VRAM freed", "success")
+                self._log("Whisper VRAM freed", "success")
             except Exception as e:
-                self.call_from_thread(self._log, f"Whisper VRAM error: {e}", "warning")
+                self._log(f"Whisper VRAM error: {e}", "warning")
 
-    def _cancel_operation(self) -> None:
-        """작업 취소."""
+    @work(exclusive=True, group="cancel")
+    async def _cancel_operation(self) -> None:
+        """작업 취소 (best-effort)."""
         self._log("Cancelling operation...", "warning")
-
-        if self.comfy_agent:
-            try:
-                self.comfy_agent.cancel_current()
-            except Exception:
-                pass
-
+        try:
+            if self.video_service:
+                _ = await self.video_service.interrupt()
+            if self.image_service:
+                _ = await self.image_service.interrupt()
+        except Exception:
+            pass
         self._update_status(AppState.IDLE, "Cancelled")
         self._update_pipeline_buttons()
 

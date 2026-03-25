@@ -1,0 +1,9 @@
+{
+  "tool": "propose_new_tool",
+  "args": {
+    "tool_name": "count_files_in_workspace",
+    "description": "워크스페이스 디렉토리의 파일 개수를 세어 반환합니다. 특정 확장자 필터링도 가능합니다.",
+    "code": "def count_files_in_workspace(extension: str = None) -> str:\n    from pathlib import Path\n    workspace_root = Path(r\"D:\\AI_Project\\mellow_link\\workspace\")\n    count = 0\n    if extension:\n        for file_path in workspace_root.rglob(f\"*.{extension.lstrip('.')}\"):\n            if file_path.is_file():\n                count += 1\n    else:\n        for file_path in workspace_root.rglob(\"*\"):\n            if file_path.is_file():\n                count += 1\n    return f\"[완료] 워크스페이스 파일 개수: {count}개\" + (f\" (확장자: .{extension})\" if extension else \"\")",
+    "parameters_json": "{\"extension\": {\"type\": \"string\", \"default\": null}}"
+  }
+}

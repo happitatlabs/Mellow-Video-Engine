@@ -1,0 +1,33 @@
+{
+  "project_id": "4540a115-971d-4006-bcd5-f75b9da7dad6",
+  "project_name": "바람 Lyrics by 시향",
+  "created_at": "2026-01-26T11:02:55.904536",
+  "updated_at": "2026-01-26T11:03:00.814244",
+  "audio_file_path": "C:\\Users\\Hyein\\AppData\\Local\\Temp\\gradio\\3c58c571ae3d9ed406ffec0bb9c30669a8b0de4b182e35ebf8bee68c1563e4f7\\바람 Lyrics by 시향.mp3",
+  "audio_duration": 0.0,
+  "lyrics_segments": [],
+  "images": {},
+  "video_clips": {},
+  "final_video_path": null,
+  "metadata": {
+    "title": "바람 Lyrics by 시향",
+    "artist": "",
+    "song_title": "",
+    "lyricist": "",
+    "composer": "",
+    "mood": "",
+    "story_description": "",
+    "translations": {}
+  },
+  "current_state": "AUDIO_ANALYSIS",
+  "state_history": [
+    {
+      "from": "INIT",
+      "to": "AUDIO_ANALYSIS",
+      "timestamp": "2026-01-26T11:03:00.814244",
+      "details": {
+        "trigger": "start"
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="max-w-4xl mx-auto px-6 py-10">
+        <a href="/ui" class="text-sm text-cyan-300 hover:text-cyan-200">Home</a>
+        <h1 class="text-3xl font-semibold mt-4">SQL Analytics</h1>
+        <p class="text-slate-400 mt-2">자연어 질문을 SQL 분석 run으로 시작합니다.</p>
+        <div class="mt-6 rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+            <textarea id="question" rows="8" class="w-full rounded-2xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm" placeholder="예: 지난 30일 환불률이 가장 높은 세그먼트는?"></textarea>
+            <button id="startBtn" class="mt-4 px-5 py-3 rounded-xl bg-cyan-400 text-slate-950 font-medium hover:bg-cyan-300">Start SQL Run</button>
+            <div id="error" class="hidden mt-4 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
+        </div>
+    </div>
+    <script>
+        function authHeaders(extra) {
+            const token = localStorage.getItem('authToken');
+            const headers = Object.assign({}, extra || {});
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+        document.getElementById('startBtn').addEventListener('click', async function () {
+            const question = (document.getElementById('question').value || '').trim();
+            const error = document.getElementById('error');
+            error.classList.add('hidden');
+            if (!question) return;
+            const res = await fetch('/modules/sql_analytics/runs', {
+                method: 'POST',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ question: question })
+            });
+            if (!res.ok) {
+                error.textContent = 'SQL analytics run 생성에 실패했습니다.';
+                error.classList.remove('hidden');
+                return;
+            }
+            const data = await res.json();
+            window.location.href = '/user-console?run_id=' + encodeURIComponent(data.run_id);
+        });
+    </script>
+</body>
+</html>

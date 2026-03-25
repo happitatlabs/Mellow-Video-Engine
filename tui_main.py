@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """
+DEPRECATED LEGACY ENTRY POINT
+=============================
+This launcher targets the deprecated Textual UI under `ui/`.
+
 Mellow-Video-Engine TUI Entry Point
 ====================================
 

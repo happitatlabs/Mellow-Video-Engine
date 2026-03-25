@@ -1,0 +1,8 @@
+[Mellow-Link Security Proposal]
+- security_level: NORMAL
+- target_path: D:\AI_Project\mellow_link\random_dir\_nope.txt
+- reason: 허용된 쓰기 영역 밖: random_dir\_nope.txt
+
+---- suggested_content_begin ----
+x
+---- suggested_content_end ----

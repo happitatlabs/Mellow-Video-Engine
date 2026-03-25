@@ -1,0 +1,9 @@
+{
+  "sealed_at": "2026-02-14T00:17:51.105429",
+  "hashes": {
+    "FORBIDDEN_NAMES": "75f0fdf8f06b5e8d1bc3893a88b238c6f7e715eb43c3e26e905ad360fa12033d",
+    "OS_FORBIDDEN_ATTRS": "5758052b4e40a49ff3ba27f082e3915fbcb3e8bdec384785800bb016846e4efa",
+    "HARD_IMPORT_WHITELIST": "d35be02eccfc9d633ed375547d0308cf8da041fa093d0439155ea9c02d46ace0"
+  },
+  "description": "tool_forge.py 보안 상수 무결성 baseline. 이 파일을 에이전트가 수정해서는 안 됨."
+}

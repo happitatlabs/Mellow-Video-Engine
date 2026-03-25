@@ -1,0 +1,8 @@
+[Mellow-Link Security Proposal]
+- security_level: NORMAL
+- target_path: D:\AI_Project\mellow_link\main.py
+- reason: 보호된 경로 직접 수정 금지: main.py
+
+---- suggested_content_begin ----
+# test
+---- suggested_content_end ----

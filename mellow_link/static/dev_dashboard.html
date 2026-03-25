@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dev Dashboard | Mellow-Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[linear-gradient(180deg,_#091019,_#020617)] text-slate-100">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-cyan-300/80">Dev Dashboard</p>
+                <h1 class="text-3xl font-semibold mt-2">다중 run 비교 뷰</h1>
+                <p class="text-slate-400 mt-2">run 목록과 비교 지표만 다룹니다. 깊은 디버깅은 dev-console에서 처리합니다.</p>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-sm">
+                <a href="/runs" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Runs</a>
+                <a id="linkDevConsole" href="/dev-console" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Dev Console</a>
+                <a id="linkOperator" href="/operator-console" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Operator</a>
+            </nav>
+        </header>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-5 mb-6">
+            <div class="grid lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto] gap-3">
+                <input id="searchInput" type="text" placeholder="run_id 또는 summary 검색" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                <select id="statusFilter" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                    <option value="">모든 상태</option>
+                </select>
+                <select id="moduleFilter" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                    <option value="">모든 모듈</option>
+                </select>
+                <select id="runKindFilter" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                    <option value="">모든 실행 유형</option>
+                </select>
+                <select id="sortBy" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                    <option value="created_at">최신 생성순</option>
+                    <option value="processing_time">duration 긴 순</option>
+                    <option value="status">status 순</option>
+                </select>
+                <button id="btnRefresh" class="px-5 py-3 rounded-xl bg-cyan-400 text-slate-950 font-medium hover:bg-cyan-300">Refresh</button>
+            </div>
+        </section>
+
+        <section class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Sample Size</div>
+                <div id="metricSample" class="mt-3 text-3xl font-semibold text-cyan-300">-</div>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Status Mix</div>
+                <div id="metricStatusMix" class="mt-3 text-sm leading-7 text-slate-300">-</div>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Module Mix</div>
+                <div id="metricModuleMix" class="mt-3 text-sm leading-7 text-slate-300">-</div>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Latency / Failure</div>
+                <div id="metricLatency" class="mt-3 text-sm leading-7 text-slate-300">-</div>
+            </div>
+        </section>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-900/60 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-950/40 text-slate-400">
+                        <tr>
+                            <th class="text-left px-4 py-3">Run</th>
+                            <th class="text-left px-4 py-3">Status</th>
+                            <th class="text-left px-4 py-3">Module</th>
+                            <th class="text-left px-4 py-3">Run Kind</th>
+                            <th class="text-left px-4 py-3">Duration</th>
+                            <th class="text-left px-4 py-3">Summary Preview</th>
+                            <th class="text-left px-4 py-3">Open</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runTableBody" class="divide-y divide-white/5">
+                        <tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">run 목록 로딩 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        let runs = [];
+
+        function authHeaders() {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+
+        function badge(status) {
+            const tone = status === 'completed'
+                ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300'
+                : status === 'failed'
+                    ? 'bg-rose-500/10 border-rose-400/20 text-rose-300'
+                    : 'bg-cyan-500/10 border-cyan-400/20 text-cyan-300';
+            return '<span class="inline-flex rounded-full border px-2 py-1 text-xs ' + tone + '">' + (status || '-') + '</span>';
+        }
+
+        function renderMetrics(metrics) {
+            document.getElementById('metricSample').textContent = metrics.sample_size || 0;
+            const latency = metrics.latency_ms || {};
+            document.getElementById('metricLatency').textContent = 'avg ' + (latency.avg ?? '-') + 'ms / p50 ' + (latency.p50 ?? '-') + 'ms / p95 ' + (latency.p95 ?? '-') + 'ms / failure ' + Math.round((metrics.failure_rate || 0) * 100) + '%';
+        }
+
+        function topCounts(items, key) {
+            const counts = {};
+            items.forEach(function (item) {
+                const value = item[key] || (key === 'module_id' ? 'engine' : 'unknown');
+                counts[value] = (counts[value] || 0) + 1;
+            });
+            return Object.entries(counts).sort(function (a, b) { return b[1] - a[1]; });
+        }
+
+        function renderRunDerivedMetrics() {
+            const statusMix = topCounts(runs, 'status');
+            const moduleMix = topCounts(runs, 'module_id');
+            document.getElementById('metricStatusMix').textContent = statusMix.length
+                ? statusMix.map(function (entry) { return entry[0] + ' ' + entry[1]; }).join(' / ')
+                : '-';
+            document.getElementById('metricModuleMix').textContent = moduleMix.length
+                ? moduleMix.slice(0, 4).map(function (entry) { return entry[0] + ' ' + entry[1]; }).join(' / ')
+                : '-';
+        }
+
+        function renderFilters() {
+            const statuses = Array.from(new Set(runs.map(function (run) { return run.status || 'unknown'; }))).sort();
+            const modules = Array.from(new Set(runs.map(function (run) { return run.module_id || 'engine'; }))).sort();
+            const runKinds = Array.from(new Set(runs.map(function (run) { return run.run_kind || 'generic'; }))).sort();
+            document.getElementById('statusFilter').innerHTML = '<option value="">모든 상태</option>' + statuses.map(function (status) { return '<option value="' + status + '">' + status + '</option>'; }).join('');
+            document.getElementById('moduleFilter').innerHTML = '<option value="">모든 모듈</option>' + modules.map(function (moduleId) { return '<option value="' + moduleId + '">' + moduleId + '</option>'; }).join('');
+            document.getElementById('runKindFilter').innerHTML = '<option value="">모든 실행 유형</option>' + runKinds.map(function (runKind) { return '<option value="' + runKind + '">' + runKind + '</option>'; }).join('');
+        }
+
+        function renderRuns() {
+            const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+            const status = document.getElementById('statusFilter').value || '';
+            const moduleId = document.getElementById('moduleFilter').value || '';
+            const runKind = document.getElementById('runKindFilter').value || '';
+            const sortBy = document.getElementById('sortBy').value || 'created_at';
+            let filtered = runs.filter(function (run) {
+                const hitQ = !q || (run.run_id || '').toLowerCase().includes(q) || (run.summary || '').toLowerCase().includes(q);
+                const hitStatus = !status || (run.status || '') === status;
+                const hitModule = !moduleId || (run.module_id || 'engine') === moduleId;
+                const hitKind = !runKind || (run.run_kind || 'generic') === runKind;
+                return hitQ && hitStatus && hitModule && hitKind;
+            });
+            filtered = filtered.sort(function (a, b) {
+                if (sortBy === 'processing_time') return (b.processing_time || 0) - (a.processing_time || 0);
+                if (sortBy === 'status') return String(a.status || '').localeCompare(String(b.status || ''));
+                return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+            });
+            const body = document.getElementById('runTableBody');
+            if (!filtered.length) {
+                body.innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">표시할 run이 없습니다.</td></tr>';
+                return;
+            }
+            body.innerHTML = filtered.map(function (run) {
+                const summary = (run.summary || '').trim() || '-';
+                return '<tr class="hover:bg-white/5">' +
+                    '<td class="px-4 py-3 font-mono text-cyan-300">' + run.run_id + '</td>' +
+                    '<td class="px-4 py-3">' + badge(run.status) + '</td>' +
+                    '<td class="px-4 py-3 text-slate-300">' + (run.module_id || 'engine') + '</td>' +
+                    '<td class="px-4 py-3 text-slate-300">' + (run.run_kind || 'generic') + '</td>' +
+                    '<td class="px-4 py-3 text-slate-300">' + (run.processing_time != null ? run.processing_time + 'ms' : '-') + '</td>' +
+                    '<td class="px-4 py-3 text-slate-400 max-w-[28rem]"><div style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + summary + '</div></td>' +
+                    '<td class="px-4 py-3"><div class="flex flex-col gap-1"><a href="/user-console?run_id=' + encodeURIComponent(run.run_id) + '" class="text-cyan-300 hover:text-cyan-200">User</a><a href="/operator-console?run_id=' + encodeURIComponent(run.run_id) + '" class="text-cyan-300 hover:text-cyan-200">Operator</a><a href="/dev-console?run_id=' + encodeURIComponent(run.run_id) + '" class="text-cyan-300 hover:text-cyan-200">Dev</a></div></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        async function loadData() {
+            const [runsRes, metricsRes] = await Promise.all([
+                fetch(API + '/api/dev/runs?limit=100', { headers: authHeaders() }),
+                fetch(API + '/api/dev/metrics?limit=200', { headers: authHeaders() })
+            ]);
+            if (runsRes.ok) {
+                const data = await runsRes.json();
+                runs = data.runs || [];
+                renderFilters();
+                renderRunDerivedMetrics();
+                renderRuns();
+            }
+            if (metricsRes.ok) {
+                renderMetrics(await metricsRes.json());
+            }
+        }
+
+        document.getElementById('btnRefresh').addEventListener('click', function () { loadData().catch(console.warn); });
+        document.getElementById('searchInput').addEventListener('input', renderRuns);
+        document.getElementById('statusFilter').addEventListener('change', renderRuns);
+        document.getElementById('moduleFilter').addEventListener('change', renderRuns);
+        document.getElementById('runKindFilter').addEventListener('change', renderRuns);
+        document.getElementById('sortBy').addEventListener('change', renderRuns);
+        loadData().catch(console.warn);
+    </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+# Chat Runtime API - OpenAPI 3.0
+# 앱의 유일한 계약. Engine 내부(FSM/GM/Tools) 노출 없음.
+# 수정 제안 반영: system_state = IDLE|TEXT|IMAGE|ERROR, actions = nullable
+
+openapi: 3.0.3
+info:
+  title: Chat Runtime API
+  description: |
+    앱은 POST /runtime/turn, GET /runtime/status만 호출.
+    코어(Engine-backed / LLM-only)는 구현체로 교체 가능.
+  version: "2026.03"
+
+servers:
+  - url: /api
+    description: API prefix (조정 가능)
+
+paths:
+  /runtime/turn:
+    post:
+      summary: 유저 자유 입력 1턴 처리
+      operationId: runtimeTurn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TurnRequest"
+      responses:
+        "200":
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TurnResponse"
+        "400":
+          description: 필수 필드 누락/형식 오류
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "401":
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "403":
+          description: 세션/캐릭터 접근 권한 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "404":
+          description: session_id 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "409":
+          description: state_version 충돌(옵션 사용 시)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "422":
+          description: 안전정책/입력 제한 위반
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "429":
+          description: 레이트 제한
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "500":
+          description: 내부 예외
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "503":
+          description: 코어/의존 서비스 일시 불가
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /runtime/status:
+    get:
+      summary: 운영자/디버그 최소 읽기 상태
+      operationId: runtimeStatus
+      responses:
+        "200":
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+
+components:
+  schemas:
+    TurnRequest:
+      type: object
+      required:
+        - session_id
+        - user
+        - input
+      properties:
+        session_id:
+          type: string
+          example: "sess_123"
+        user:
+          type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+              example: "u_42"
+        input:
+          type: object
+          required: [text]
+          properties:
+            text:
+              type: string
+              example: "오늘 기분이 어때?"
+            locale:
+              type: string
+              example: "ko-KR"
+            channel:
+              type: string
+              example: "discord"
+        context:
+          type: object
+          properties:
+            character_id:
+              type: string
+              example: "char_mellow"
+            model_tier_requested:
+              type: string
+              enum: [free, pro, auto]
+            client_turn_id:
+              type: string
+              example: "cli_turn_001"
+            metadata:
+              type: object
+              additionalProperties: true
+
+    TurnResponse:
+      type: object
+      properties:
+        turn:
+          $ref: "#/components/schemas/TurnPayload"
+        state:
+          $ref: "#/components/schemas/TurnState"
+        meta:
+          $ref: "#/components/schemas/TurnMeta"
+
+    TurnPayload:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "turn_889"
+        speech:
+          type: string
+          description: UI 기본 출력
+        passage:
+          type: string
+          nullable: true
+          description: 장문/서사 블록(선택)
+        ooc:
+          type: string
+          nullable: true
+          description: 시스템/메타 발화(선택)
+        actions:
+          type: array
+          nullable: true
+          description: 챗봇 범위에서는 nullable 권장
+          items: {}
+        clarify:
+          nullable: true
+          $ref: "#/components/schemas/ClarifyPayload"
+
+    ClarifyPayload:
+      type: object
+      description: 확신 낮을 때 되묻기
+      properties:
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+          example: "intent_confidence_low"
+
+    TurnState:
+      type: object
+      properties:
+        session_id:
+          type: string
+        state_version:
+          type: integer
+          description: 낙관적 동기화/디버그
+        system_state:
+          type: string
+          enum: [IDLE, TEXT, IMAGE, ERROR]
+          description: FSM 기반 (엔진일 때만 의미 있음)
+        model_tier_effective:
+          type: string
+          enum: [free, pro]
+
+    TurnMeta:
+      type: object
+      properties:
+        trace_id:
+          type: string
+          example: "trc_20260305_abcd"
+        runtime_impl:
+          type: string
+          enum: [engine-backed, llm-only]
+        latency_ms:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        engine_ref:
+          type: string
+          description: Engine 내부 ID(선택). 앱 비의존용 optional 노출
+
+    StatusResponse:
+      type: object
+      properties:
+        runtime:
+          type: object
+          properties:
+            impl:
+              type: string
+              enum: [engine-backed, llm-only]
+            version:
+              type: string
+              example: "2026.03"
+            uptime_sec:
+              type: number
+        health:
+          type: object
+          properties:
+            system_state:
+              type: string
+              enum: [IDLE, TEXT, IMAGE, ERROR]
+            last_error:
+              type: string
+              nullable: true
+            degraded:
+              type: boolean
+        counters:
+          type: object
+          properties:
+            turns_1m:
+              type: integer
+            p95_latency_ms:
+              type: number
+            error_rate_1m:
+              type: number
+        time:
+          type: string
+          format: date-time
+
+    ErrorBody:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - BAD_REQUEST
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - NOT_FOUND
+                - CONFLICT
+                - UNPROCESSABLE_ENTITY
+                - TOO_MANY_REQUESTS
+                - INTERNAL_ERROR
+                - SERVICE_UNAVAILABLE
+            message:
+              type: string
+            trace_id:
+              type: string

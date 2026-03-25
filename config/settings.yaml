@@ -47,7 +47,7 @@ comfyui:
 
 # FFmpeg Settings
 ffmpeg:
-  path: "ffmpeg"  # or full path to ffmpeg executable
+  path: "D:/Mellow-Video-Engine/.venv/Scripts/ffmpeg.exe"
   video_codec: "libx264"
   audio_codec: "aac"
   video_bitrate: "5000k"
@@ -104,3 +104,67 @@ logging:
   level: "INFO"
   file: "./logs/mellow.log"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Unified maintained runtime outputs
+outputs:
+  root: "./outputs"
+  uploads_dir: "uploads"
+  transcripts_dir: "transcripts"
+  images_dir: "images"
+  videos_dir: "videos"
+  final_dir: "final"
+  strip_prompt_metadata: false
+
+video:
+  default_mode: "LOCAL_MOTION_LOOP"
+  locked_camera_mode: true
+  locked_camera_backend: "ambient_loop"
+  locked_camera_workflow: "svd_xt_locked_camera.json"
+  stabilize_zoom_drift: true
+  stabilization_strength: 0.18
+  ambient_motion_strength: 0.34
+  ambient_loop:
+    debug_visualization: true
+    visibility_mode: "visibility_first"
+    min_patch_alpha: 0.22
+    min_patch_shift_px: 14.0
+    min_light_pulse: 0.75
+  motion_bucket_id_locked: 1
+  augmentation_level_locked: 0.0
+  video_frames_locked: 21
+  raw_fps_locked: 7
+  output_fps: 8
+  sampler_steps_locked: 14
+  sampler_cfg_locked: 1.5
+  motion_video:
+    workflow: "ltx_2b_v0_9_ckpt_i2v_lowmem.json"
+    width: 576
+    height: 320
+    frames: 17
+    fps: 6
+    duration_seconds: 2.83
+  motion_video_spike:
+    engine: "ltx_local_2b_v0_9"
+    enabled: true
+    workflow: "ltx_2b_v0_9_ckpt_i2v_lowmem.json"
+    comfy_root: "D:/AI_Hub/Models/ComfyUI_windows_portable/ComfyUI"
+    model_file: "ltx-video-2b-v0.9.safetensors"
+    model_search_dirs:
+      - "models/unet"
+      - "models/diffusion_models"
+      - "models/checkpoints"
+    clip_file: "t5xxl_fp16.safetensors"
+    vae_file: "ae.safetensors"
+    width: 576
+    height: 320
+    length: 17
+    fps: 6
+    duration_seconds: 2.83
+    steps: 20
+    cfg: 3.0
+    sampler: "euler"
+    scheduler: "simple"
+    strength: 0.75
+    unet_weight_dtype: "fp8_e4m3fn_fast"
+    clip_device: "cpu"
+    reserve_vram_gb: 4

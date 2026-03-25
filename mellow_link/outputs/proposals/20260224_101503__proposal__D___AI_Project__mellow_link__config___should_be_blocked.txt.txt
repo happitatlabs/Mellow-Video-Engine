@@ -1,0 +1,8 @@
+[Mellow-Link Security Proposal]
+- security_level: HARD
+- target_path: D:\AI_Project\mellow_link\config\_should_be_blocked.txt
+- reason: 보호된 경로 직접 수정 금지: config\_should_be_blocked.txt
+
+---- suggested_content_begin ----
+x
+---- suggested_content_end ----

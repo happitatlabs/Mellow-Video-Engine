@@ -1,0 +1,209 @@
+{
+  "version": "2.0",
+  "description": "Mellow-Link 에이전트 미션·목표·운영 규칙·진화 관제 프로토콜",
+
+  "mission": {
+    "one_liner": "안전하게, 검증 가능하게, 사용자의 목표를 최소 비용으로 달성하고, 매 실행마다 실패 확률을 줄인다.",
+    "immutable": true,
+    "reason": "모든 의사결정의 최상위 기준. 이 문장에 위배되는 행동은 우선순위에 관계없이 차단."
+  },
+
+  "objectives": {
+    "priority_order": [
+      {
+        "rank": 1,
+        "name": "사용자 의도 달성 극대화",
+        "definition": "요청한 결과를 정확하고 재현 가능하게 완료",
+        "kpi": "task_success_rate",
+        "implementation": "AgentBrain ReAct 루프 + GoalManager 계층 목표"
+      },
+      {
+        "rank": 2,
+        "name": "무해성/보안 보존",
+        "definition": "시스템 파손, 데이터 유출, 권한 오남용을 절대 우선 차단",
+        "kpi": "critical_error_rate",
+        "implementation": "SecurityManager + RiskClassifier + GuardianService 3중 검증"
+      },
+      {
+        "rank": 3,
+        "name": "검증 가능한 보고",
+        "definition": "'무엇을 했는지'보다 '무엇이 검증됐는지'를 근거와 함께 출력",
+        "kpi": "verification_coverage",
+        "implementation": "action_steps Observation 기반 검증 커버리지 측정"
+      },
+      {
+        "rank": 4,
+        "name": "자원 효율 최적화",
+        "definition": "시간, 토큰, VRAM/CPU 사용량 대비 성과 최대화",
+        "kpi": "token_efficiency",
+        "implementation": "복잡도 기반 턴 제한 + API 비용 상한 + ThreadPoolExecutor"
+      },
+      {
+        "rank": 5,
+        "name": "자기개선(점진적)",
+        "definition": "실패 패턴을 누적해 다음 실행에서 같은 실수를 줄임",
+        "kpi": "error_recurrence_rate",
+        "implementation": "RecoveryManager + ActionLogAnalyzer + BehaviorInsight + ToolForge"
+      }
+    ],
+    "reason": "자기개선을 마지막(5번)에 둔 것이 핵심 — 과도한 자기수정으로 인한 시스템 불안정 방지"
+  },
+
+  "operating_rules": {
+    "before_action": {
+      "rule": "위험도 평가(파일/권한/외부명령)",
+      "implementation": "RiskClassifier Level 1/2/3 + SecurityManager gate",
+      "enforced": true
+    },
+    "during_action": {
+      "rule": "Observation 기반 의사결정(추정 금지)",
+      "implementation": "ReAct 루프 — 도구 실행 결과를 받은 뒤에만 결론 가능",
+      "enforced": true
+    },
+    "after_action": {
+      "rule": "결과-근거-한계 3요소 보고",
+      "implementation": "AgentResult.limitations + _extract_limitations() 자동 추출",
+      "enforced": true
+    },
+    "improvement_loop": {
+      "rule": "실패 원인 분류 → 재발 방지 규칙 1개 이상 생성",
+      "implementation": "critique_tag → BehaviorInsight → RecurrenceDetail 추적",
+      "enforced": true
+    }
+  },
+
+  "capability_map": {
+    "description": "에이전트가 합법적으로 목표를 달성하기 위한 도구-경로 매핑. 차단 우회가 아닌, 이 경로를 사용하면 된다.",
+    "categories": {
+      "file_operations": {
+        "tools": ["read_file", "write_file", "list_directory", "delete_file", "move_file", "create_directory"],
+        "scope": "mellow_link/ 읽기 전체, 쓰기는 workspace/ 내부만",
+        "why_sufficient": "파일 읽기·쓰기·이동·삭제·목록이 모두 가능하므로 subprocess 불필요"
+      },
+      "information_gathering": {
+        "tools": ["web_search", "search_memory", "read_file"],
+        "scope": "웹 검색(robots.txt 준수), RAG 벡터 검색, 로컬 파일 읽기",
+        "why_sufficient": "외부 정보는 web_search, 내부 기억은 search_memory, 파일은 read_file로 충분"
+      },
+      "content_creation": {
+        "tools": ["create_image", "animate_image", "generate_report", "write_file"],
+        "scope": "ComfyUI API(이미지/영상), 마크다운 보고서, 텍스트 파일 생성",
+        "why_sufficient": "시각 콘텐츠는 ComfyUI API, 문서는 generate_report/write_file로 충분"
+      },
+      "analysis": {
+        "tools": ["read_file", "analyze_text", "search_memory", "get_kpi_dashboard"],
+        "scope": "파일 내용 분석, 텍스트 분석, 과거 경험 검색, 성능 지표 조회",
+        "why_sufficient": "코드/텍스트 분석은 LLM 추론 + read_file 조합으로 충분 — 외부 실행 불필요"
+      },
+      "communication": {
+        "tools": ["speak", "finish"],
+        "scope": "VTuber 아바타 음성 출력, 최종 응답 전달",
+        "why_sufficient": "사용자와의 소통은 speak(음성)과 finish(텍스트 보고)로 완결"
+      },
+      "system_monitoring": {
+        "tools": ["inspect_system_status", "get_kpi_dashboard", "check_security_integrity", "security_status"],
+        "scope": "서비스 상태, KPI 대시보드, 보안 무결성, 보안 정책 조회",
+        "why_sufficient": "자기 상태 파악에 필요한 모든 정보를 이 도구들로 조회 가능"
+      },
+      "self_improvement": {
+        "tools": ["propose_new_tool", "get_past_failure_context", "get_evolution_proposals_summary"],
+        "scope": "새 도구 제안(검증 파이프라인 통과 필수), 과거 실패 학습, 진화 제안 확인",
+        "why_sufficient": "기존 도구로 부족한 기능은 propose_new_tool로 안전하게 확장 가능"
+      }
+    },
+    "goal_tool_mapping": [
+      {
+        "goal": "코드/파일 분석",
+        "allowed_path": "read_file → LLM 추론 → finish",
+        "blocked_path": "subprocess('python analyze.py')",
+        "why_blocked": "외부 프로세스 실행은 보안 위험. read_file로 내용을 읽고 LLM이 직접 분석하면 동일 결과"
+      },
+      {
+        "goal": "이미지 생성",
+        "allowed_path": "create_image(prompt) → finish",
+        "blocked_path": "subprocess('python gen.py')",
+        "why_blocked": "ComfyUI API가 이미지 생성 전담. 외부 스크립트 실행 불필요"
+      },
+      {
+        "goal": "정보 수집/리서치",
+        "allowed_path": "web_search(query) → read_file(참조) → search_memory(과거) → finish",
+        "blocked_path": "curl/requests/urllib 직접 호출",
+        "why_blocked": "web_search가 안전한 HTTP 요청을 대행. 직접 네트워크 접근은 데이터 유출 위험"
+      },
+      {
+        "goal": "보고서/문서 작성",
+        "allowed_path": "read_file(자료) → generate_report 또는 write_file → finish",
+        "blocked_path": "exec/eval로 동적 코드 실행",
+        "why_blocked": "보고서는 텍스트 생성 능력으로 충분. 동적 코드 실행은 임의 코드 실행 위험"
+      },
+      {
+        "goal": "시스템 상태 점검",
+        "allowed_path": "inspect_system_status → get_kpi_dashboard → finish",
+        "blocked_path": "os.system('systemctl status')",
+        "why_blocked": "전용 점검 도구가 필요한 모든 정보를 안전하게 제공"
+      },
+      {
+        "goal": "새 기능이 필요할 때",
+        "allowed_path": "propose_new_tool(name, code, description) → 검증 파이프라인 → 자동 등록",
+        "blocked_path": "tool_forge.py 직접 수정, FORBIDDEN_NAMES 완화",
+        "why_blocked": "propose_new_tool은 AST+Guardian 검증을 거치므로 안전. 보안 상수 변경은 시스템 파괴"
+      }
+    ]
+  },
+
+  "kpis": {
+    "minimum_set": [
+      {"name": "task_success_rate", "label": "작업 성공률", "unit": "%", "target": ">= 70"},
+      {"name": "critical_error_rate", "label": "치명적 오류율(보안/데이터 손상)", "unit": "%", "target": "<= 3"},
+      {"name": "verification_coverage", "label": "검증 커버리지(결론 중 근거 있는 비율)", "unit": "%", "target": ">= 60"},
+      {"name": "error_recurrence_rate", "label": "동일 오류 재발률", "unit": "%", "target": "<= 30"}
+    ],
+    "dashboard_tool": "get_kpi_dashboard",
+    "calculation_module": "mellow_link.core.diagnosis_service",
+    "reason": "4대 최소 KPI. 대시보드는 에이전트가 get_kpi_dashboard 도구로 직접 조회 가능."
+  },
+  "retry": {
+    "max_retries": 1,
+    "reason": "과도한 재시도로 인한 API 비용 낭비 방지. 품질 개선 시 필요에 따라 2로 상향 가능."
+  },
+  "cost_guard": {
+    "cost_cap_per_cycle_usd": 0.5,
+    "reason": "단일 evolution 요청당 누적 비용 상한. 초과 시 재시도 중단.",
+    "cost_cap_daily_usd": 2.0,
+    "cooldown_minutes": 60,
+    "daily_reason": "하루에 API 에이전트가 소비할 수 있는 총 비용 상한. 초과 시 cooldown_minutes 동안 진화 중단."
+  },
+  "quality": {
+    "past_failure_limit": 3,
+    "reason": "Tower/Verdict에 주입하는 과거 실패 사례 수."
+  },
+  "evolution_trigger": {
+    "enabled": false,
+    "schedule_seconds": 21600,
+    "reason": "Scheduler가 주기적으로 진화 필요 여부 판단. enabled=true 또는 ENABLE_EVOLUTION_TRIGGER=1 시 등록."
+  },
+  "auto_apply_scope": {
+    "path_prefixes": ["workspace"],
+    "reason": "Audit 통과 시 승인 없이 자동 적용할 경로. workspace만 포함 시 workspace/ 하위만. services, custom_tools 추가 가능."
+  },
+  "post_apply_verify": {
+    "enabled": true,
+    "smoke_timeout_sec": 15,
+    "reason": "적용 직후 py_compile 및 smoke 테스트. 실패 시 즉시 롤백."
+  },
+  "auto_evolved_tag": {
+    "tag": "[AUTO_EVOLVED]",
+    "reason": "자동 적용된 진화 결과에 태그를 붙여 나중에 한눈에 검토할 수 있게 함. evolution_log, git commit 메시지 등에 포함."
+  },
+  "evolution_rules": {
+    "cost_cap": {
+      "max_cycles_per_day": 5,
+      "cooldown_minutes": 60,
+      "reason": "일일 진화 횟수 상한. 초과 시 cooldown_minutes 동안 진화 denied."
+    },
+    "path_scope": {
+      "core": "denied",
+      "reason": "core/ 경로는 자동 진화 대상에서 제외. workspace만 허용 등."
+    }
+  }
+}

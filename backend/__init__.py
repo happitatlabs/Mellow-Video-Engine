@@ -1,44 +1,29 @@
 """
-Mellow-Video-Engine Backend
-===========================
-오디오 분석 및 비디오 합성 엔진.
+Backend package exports.
 
-Modules:
-- audio_engine: faster-whisper 기반 가사 정렬
-- video_engine: ffmpeg-python 기반 비디오 합성
+Only the audio path is guaranteed to be part of the current maintained runtime.
+Legacy video composition modules are intentionally not re-exported from this
+package to avoid accidental use.
 """
+
+from __future__ import annotations
 
 from .audio_engine import (
     LyricAligner,
     LyricSegment,
-    WordSegment,
     ModelSize,
+    WordSegment,
+    format_timestamp,
     merge_segments,
     split_long_segments,
-    format_timestamp,
-)
-
-from .video_engine import (
-    VideoComposer,
-    ClipInfo,
-    SubtitleEntry,
-    RenderConfig,
-    ASSGenerator,
 )
 
 __all__ = [
-    # Audio Engine
     "LyricAligner",
     "LyricSegment",
-    "WordSegment",
     "ModelSize",
+    "WordSegment",
+    "format_timestamp",
     "merge_segments",
     "split_long_segments",
-    "format_timestamp",
-    # Video Engine
-    "VideoComposer",
-    "ClipInfo",
-    "SubtitleEntry",
-    "RenderConfig",
-    "ASSGenerator",
 ]

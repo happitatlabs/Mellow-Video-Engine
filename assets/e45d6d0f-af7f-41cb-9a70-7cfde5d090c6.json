@@ -1,0 +1,174 @@
+{
+  "project_id": "e45d6d0f-af7f-41cb-9a70-7cfde5d090c6",
+  "project_name": "언니의 손수건 3",
+  "created_at": "2026-01-27T02:36:47.558571",
+  "updated_at": "2026-01-27T02:36:53.777681",
+  "audio_file_path": "C:\\Users\\Hyein\\AppData\\Local\\Temp\\gradio\\b2c59aee5111aced6741d9637e1a8240ff3ea00d6f13f1ad309ece4fc402fb87\\언니의 손수건 3.mp3",
+  "audio_duration": 183.639979,
+  "lyrics_segments": [
+    {
+      "id": "312f2d6b",
+      "text": "새로운 나의 바람은 진짜 언니가 되는 일 때마다",
+      "start_time": 13.49,
+      "end_time": 18.85,
+      "confidence": 0.877240498860677,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "df8e1cdd",
+      "text": "마음 깊은 곳에 조심히",
+      "start_time": 20.61,
+      "end_time": 24.13,
+      "confidence": 0.9282430013020834,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "410c9c81",
+      "text": "접어두었던 손수건 한 장을",
+      "start_time": 26.62,
+      "end_time": 30.86,
+      "confidence": 0.9690348307291666,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "a2b51c3d",
+      "text": "받아들여 한",
+      "start_time": 32.5,
+      "end_time": 35.02,
+      "confidence": 0.66357421875,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "8ac52598",
+      "text": "사람의 열을 오래도록 품어주는 일 멀리",
+      "start_time": 39.3,
+      "end_time": 43.52,
+      "confidence": 0.7349297205607097,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "b2de9a73",
+      "text": "다가와 젖은 마음을 닦아내는 말을",
+      "start_time": 45.88,
+      "end_time": 50.18,
+      "confidence": 0.9109212239583334,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "ced1b157",
+      "text": "다듬지 않아도 위로를 서두르지 않아도 비워낸 마음 위로 조용히 닿는 다정",
+      "start_time": 53.96,
+      "end_time": 65.96,
+      "confidence": 0.9657346372251158,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "59f5a41c",
+      "text": "크지 않아도",
+      "start_time": 74.82,
+      "end_time": 77.07,
+      "confidence": 0.953857421875,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "79c9f8cc",
+      "text": "곁에 남아지는 주지",
+      "start_time": 77.55,
+      "end_time": 97.89,
+      "confidence": 0.82891845703125,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "61acaa25",
+      "text": "않는 진심의 온도",
+      "start_time": 119.68,
+      "end_time": 125.76,
+      "confidence": 0.7621663411458334,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "752547f2",
+      "text": "천천히 꿰매어 본다",
+      "start_time": 150.17,
+      "end_time": 153.72,
+      "confidence": 0.9542134602864583,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    }
+  ],
+  "images": {},
+  "video_clips": {},
+  "final_video_path": null,
+  "metadata": {
+    "title": "언니의 손수건 3",
+    "artist": null,
+    "song_title": null,
+    "lyricist": "",
+    "composer": "",
+    "mood": null,
+    "story_description": null,
+    "translations": {}
+  },
+  "current_state": "AUDIO_REVIEW",
+  "state_history": [
+    {
+      "from": "INIT",
+      "to": "AUDIO_ANALYSIS",
+      "timestamp": "2026-01-27T02:36:47.664561",
+      "details": {
+        "trigger": "start"
+      }
+    },
+    {
+      "from": "AUDIO_ANALYSIS",
+      "to": "AUDIO_REVIEW",
+      "timestamp": "2026-01-27T02:36:53.777681",
+      "details": {
+        "trigger": "analysis_complete"
+      }
+    }
+  ]
+}

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rebuild Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-stone-950 text-stone-100">
+    <div class="max-w-5xl mx-auto px-6 py-10">
+        <a href="/ui" class="text-sm text-amber-300 hover:text-amber-200">Home</a>
+        <h1 class="mt-4 text-3xl font-semibold">Rebuild Assistant</h1>
+        <p class="mt-2 text-stone-400">JSP/Java/SQL 기반 레거시 기능을 단일 기능 수준에서 재구성 계획으로 정리합니다.</p>
+        <div class="mt-6 space-y-4 rounded-3xl border border-white/10 bg-stone-900/60 p-6">
+            <div class="rounded-2xl border border-white/10 bg-stone-950/40 p-4 space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-sm font-medium text-stone-200">인증 상태</div>
+                        <div id="authStatus" class="mt-1 text-xs text-amber-300">로그인이 필요합니다.</div>
+                    </div>
+                    <a href="/index.html" class="text-xs text-cyan-300 hover:text-cyan-200">기존 로그인 화면</a>
+                </div>
+                <div id="loginPanel" class="grid md:grid-cols-[1fr_1fr_auto] gap-3">
+                    <input id="loginUsername" type="text" placeholder="Username" class="rounded-xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" />
+                    <input id="loginPassword" type="password" placeholder="Password" class="rounded-xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" />
+                    <button id="loginBtn" class="rounded-xl bg-cyan-400 px-4 py-3 font-medium text-stone-950 hover:bg-cyan-300">Login</button>
+                </div>
+                <div id="authError" class="hidden text-xs text-rose-400"></div>
+            </div>
+            <textarea id="goal" rows="4" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="예: 이 JSP 주문 조회 화면을 React + REST API 구조로 현대화해줘"></textarea>
+            <textarea id="sourceCode" rows="6" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="Legacy source code"></textarea>
+            <div class="grid gap-4 md:grid-cols-2">
+                <textarea id="databaseSchema" rows="5" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="Database schema"></textarea>
+                <textarea id="sqlQueries" rows="5" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="SQL queries"></textarea>
+                <textarea id="uiTemplate" rows="5" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="UI template"></textarea>
+                <textarea id="frameworkInfo" rows="5" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="Framework info / runtime notes"></textarea>
+            </div>
+            <textarea id="constraints" rows="4" class="w-full rounded-2xl border border-white/10 bg-stone-950/70 px-4 py-3 text-sm" placeholder="Constraints (one per line)"></textarea>
+            <div class="rounded-2xl border border-dashed border-white/10 bg-stone-950/40 p-4">
+                <label for="fileInput" class="block text-sm font-medium text-stone-200">문서 업로드</label>
+                <p class="mt-1 text-xs text-stone-500">기존 temp upload 흐름을 그대로 사용합니다.</p>
+                <input id="fileInput" type="file" multiple class="mt-3 block w-full text-sm text-stone-300 file:mr-4 file:rounded-xl file:border-0 file:bg-amber-300 file:px-4 file:py-2 file:font-medium file:text-stone-950 hover:file:bg-amber-200" />
+                <button id="uploadBtn" class="mt-3 rounded-xl border border-white/10 bg-stone-800 px-4 py-2 text-sm font-medium hover:bg-stone-700">Upload Documents</button>
+                <div id="uploadStatus" class="mt-3 text-xs text-stone-400">업로드한 문서가 없습니다.</div>
+                <div class="mt-4">
+                    <div class="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Classified Files</div>
+                    <div id="classifiedFiles" class="mt-2 text-xs text-stone-400">자동 분류된 파일이 없습니다.</div>
+                </div>
+            </div>
+            <button id="startBtn" class="rounded-xl bg-amber-300 px-5 py-3 font-medium text-stone-950 hover:bg-amber-200">Start Rebuild Run</button>
+            <div id="error" class="hidden rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"></div>
+        </div>
+    </div>
+    <script>
+        const uploadSessionId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+            ? window.crypto.randomUUID()
+            : ('rebuild-' + Date.now());
+        const uploadedFiles = [];
+        const classifiedFiles = [];
+
+        function getStoredToken() {
+            return localStorage.getItem('authToken') || localStorage.getItem('auth_token') || '';
+        }
+
+        function setStoredToken(token) {
+            if (token) {
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('auth_token', token);
+            } else {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('auth_token');
+            }
+        }
+
+        function authHeaders(extra) {
+            const token = getStoredToken();
+            const headers = Object.assign({}, extra || {});
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+
+        function setAuthMessage(message, isError) {
+            const status = document.getElementById('authStatus');
+            const error = document.getElementById('authError');
+            if (status) {
+                status.className = 'mt-1 text-xs ' + (isError ? 'text-rose-300' : 'text-emerald-300');
+                status.textContent = message;
+            }
+            if (error) {
+                if (isError) {
+                    error.classList.remove('hidden');
+                    error.textContent = message;
+                } else {
+                    error.classList.add('hidden');
+                    error.textContent = '';
+                }
+            }
+        }
+
+        function updateAuthUI() {
+            const token = getStoredToken();
+            const panel = document.getElementById('loginPanel');
+            if (token) {
+                if (panel) panel.classList.add('hidden');
+                setAuthMessage('로그인됨. rebuild_assistant run을 생성할 수 있습니다.', false);
+            } else {
+                if (panel) panel.classList.remove('hidden');
+                setAuthMessage('로그인이 필요합니다. 아래에서 로그인하거나 기존 로그인 화면을 사용하세요.', false);
+            }
+        }
+
+        async function login() {
+            const username = (document.getElementById('loginUsername').value || '').trim();
+            const password = document.getElementById('loginPassword').value || '';
+            if (!username || !password) {
+                setAuthMessage('사용자명과 비밀번호를 입력하세요.', true);
+                return;
+            }
+            const form = new URLSearchParams();
+            form.set('username', username);
+            form.set('password', password);
+            try {
+                const res = await fetch('/auth/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: form.toString()
+                });
+                const payload = await res.json().catch(function () { return {}; });
+                if (!res.ok) {
+                    setAuthMessage(payload.detail || '로그인 실패', true);
+                    return;
+                }
+                setStoredToken(payload.access_token || '');
+                setAuthMessage('로그인 성공', false);
+                document.getElementById('loginPassword').value = '';
+                updateAuthUI();
+            } catch (e) {
+                setAuthMessage('로그인 요청 실패', true);
+            }
+        }
+
+        function setError(message) {
+            const el = document.getElementById('error');
+            if (!message) {
+                el.classList.add('hidden');
+                el.textContent = '';
+                return;
+            }
+            el.classList.remove('hidden');
+            el.textContent = message;
+        }
+
+        function formatErrorDetail(detail, fallback) {
+            if (!detail) return fallback;
+            if (typeof detail === 'string') return detail;
+            if (Array.isArray(detail)) {
+                const items = detail.map(function (item) {
+                    if (typeof item === 'string') return item;
+                    if (item && typeof item === 'object') {
+                        const loc = Array.isArray(item.loc) ? item.loc.join('.') : '';
+                        const msg = item.msg || JSON.stringify(item);
+                        return loc ? (loc + ': ' + msg) : msg;
+                    }
+                    return String(item);
+                }).filter(Boolean);
+                return items.join(' / ') || fallback;
+            }
+            if (detail && typeof detail === 'object') {
+                return detail.detail || detail.message || JSON.stringify(detail);
+            }
+            return String(detail || fallback);
+        }
+
+        function setUploadStatus(message, isError) {
+            const el = document.getElementById('uploadStatus');
+            el.className = 'mt-3 text-xs ' + (isError ? 'text-rose-400' : 'text-stone-400');
+            const filesText = uploadedFiles.length ? ('업로드됨: ' + uploadedFiles.join(', ')) : '업로드한 문서가 없습니다.';
+            el.textContent = message ? (message + ' / ' + filesText) : filesText;
+        }
+
+        function appendToTextarea(id, text, label) {
+            const el = document.getElementById(id);
+            if (!el || !text || (el.value || '').trim()) return false;
+            el.value = text.trim();
+            classifiedFiles.push(label);
+            return true;
+        }
+
+        function renderClassifiedFiles() {
+            const el = document.getElementById('classifiedFiles');
+            if (!el) return;
+            if (!classifiedFiles.length) {
+                el.textContent = '자동 분류된 파일이 없습니다.';
+                return;
+            }
+            const items = classifiedFiles.map(function (item) {
+                return '<div class="rounded-lg border border-white/10 bg-stone-900/40 px-3 py-2">' + item + '</div>';
+            }).join('');
+            el.innerHTML = '<div class="grid gap-2 sm:grid-cols-2">' + items + '</div>';
+        }
+
+        function countMatches(text, pattern) {
+            const matches = text.match(pattern);
+            return matches ? matches.length : 0;
+        }
+
+        function classifySqlContent(name, text) {
+            const loweredName = name.toLowerCase();
+            const loweredText = (text || '').toLowerCase();
+            const createCount = countMatches(loweredText, /create\s+table/g);
+            const queryCount = countMatches(loweredText, /\b(select|insert|update|delete|join|where)\b/g);
+            if (loweredName.startsWith('schema') || loweredName.startsWith('ddl') || createCount >= 1) {
+                return 'databaseSchema';
+            }
+            if (loweredName.startsWith('query') || loweredName.startsWith('mapper') || queryCount >= 4) {
+                return 'sqlQueries';
+            }
+            return '';
+        }
+
+        function classifyFile(file, text) {
+            const name = (file.name || '').toLowerCase();
+            if (name === 'goal.txt') return 'goal';
+            if (name === 'constraints.txt') return 'constraints';
+            if (name.endsWith('.jsp') || name.endsWith('.html')) return 'uiTemplate';
+            if (name.endsWith('.java') || name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.xml')) return 'sourceCode';
+            if (name.endsWith('.sql')) return classifySqlContent(name, text);
+            if (name.includes('framework') || name.includes('readme') || name.endsWith('.md') || name.endsWith('.properties') || name.endsWith('.yml') || name.endsWith('.yaml')) {
+                return 'frameworkInfo';
+            }
+            return '';
+        }
+
+        function applyClassification(file, text) {
+            const target = classifyFile(file, text);
+            if (!target || !text || !text.trim()) return;
+            if (target === 'goal') {
+                const goalEl = document.getElementById('goal');
+                if (goalEl && !(goalEl.value || '').trim()) {
+                    goalEl.value = text.trim();
+                    classifiedFiles.push(file.name + ' -> goal');
+                }
+                return;
+            }
+            if (target === 'constraints') {
+                const constraintsEl = document.getElementById('constraints');
+                if (constraintsEl && !(constraintsEl.value || '').trim()) {
+                    constraintsEl.value = text
+                        .split(/\r?\n/)
+                        .map(function (line) { return line.trim(); })
+                        .filter(Boolean)
+                        .join('\n');
+                    classifiedFiles.push(file.name + ' -> constraints');
+                }
+                return;
+            }
+            const fieldMap = {
+                sourceCode: 'sourceCode',
+                databaseSchema: 'databaseSchema',
+                sqlQueries: 'sqlQueries',
+                uiTemplate: 'uiTemplate',
+                frameworkInfo: 'frameworkInfo',
+            };
+            const textareaId = fieldMap[target];
+            if (!textareaId) return;
+            appendToTextarea(textareaId, text, file.name + ' -> ' + textareaId);
+        }
+
+        async function readFileText(file) {
+            try {
+                return await file.text();
+            } catch (e) {
+                return '';
+            }
+        }
+
+        document.getElementById('uploadBtn').addEventListener('click', async function () {
+            const input = document.getElementById('fileInput');
+            const files = Array.from((input && input.files) || []);
+            if (!files.length) {
+                setUploadStatus('먼저 업로드할 문서를 선택하세요.', true);
+                return;
+            }
+            setUploadStatus('문서 업로드 중...', false);
+            for (const file of files) {
+                const localText = await readFileText(file);
+                applyClassification(file, localText);
+                const form = new FormData();
+                form.append('file', file);
+                form.append('session_id', uploadSessionId);
+                const res = await fetch('/chat/upload-temp', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: form
+                });
+                if (!res.ok) {
+                    let detail = '업로드 실패';
+                    try {
+                        const payload = await res.json();
+                        detail = payload.detail || detail;
+                    } catch (e) {}
+                    setUploadStatus(detail, true);
+                    return;
+                }
+                const data = await res.json();
+                if (!uploadedFiles.includes(data.filename)) uploadedFiles.push(data.filename);
+            }
+            setUploadStatus('문서 업로드 완료', false);
+            renderClassifiedFiles();
+            if (input) input.value = '';
+        });
+
+        document.getElementById('startBtn').addEventListener('click', async function () {
+            setError('');
+            const goal = (document.getElementById('goal').value || '').trim();
+            if (goal.length < 8) {
+                setError('goal 입력은 공백 제외 8자 이상이어야 합니다. 파일 업로드만으로는 실행되지 않으니 상단 goal 칸에 재구성 목표를 직접 적어주세요.');
+                return;
+            }
+            if (!getStoredToken()) {
+                setAuthMessage('rebuild_assistant run 생성에는 로그인이 필요합니다.', true);
+                return;
+            }
+            const payload = {
+                goal: goal,
+                assets: {
+                    source_code: document.getElementById('sourceCode').value || '',
+                    database_schema: document.getElementById('databaseSchema').value || '',
+                    sql_queries: document.getElementById('sqlQueries').value || '',
+                    ui_template: document.getElementById('uiTemplate').value || '',
+                    framework_info: document.getElementById('frameworkInfo').value || ''
+                },
+                constraints: (document.getElementById('constraints').value || '').split('\n').map(function (item) { return item.trim(); }).filter(Boolean),
+                temp_session_id: uploadSessionId
+            };
+            const res = await fetch('/modules/rebuild_assistant/runs', {
+                method: 'POST',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                let detail = 'rebuild_assistant run 생성 실패';
+                try {
+                    const body = await res.json();
+                    detail = formatErrorDetail(body.detail || body, detail);
+                } catch (e) {}
+                if (res.status === 401) {
+                    setStoredToken('');
+                    updateAuthUI();
+                    setAuthMessage(detail || '로그인이 필요합니다.', true);
+                }
+                setError(detail);
+                return;
+            }
+            const data = await res.json();
+            window.location.href = '/user-console?run_id=' + encodeURIComponent(data.run_id);
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', login);
+        document.getElementById('loginPassword').addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') login();
+        });
+        updateAuthUI();
+    </script>
+</body>
+</html>

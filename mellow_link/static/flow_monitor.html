@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mellow-Link Flow Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .flow-timeline-row { cursor: pointer; transition: background 0.15s; }
+        .flow-timeline-row:hover { background: rgba(99, 102, 241, 0.15); }
+        .flow-timeline-row.selected { background: rgba(99, 102, 241, 0.25); border-left: 3px solid #6366f1; }
+        .flow-risk-high { background: rgba(239, 68, 68, 0.25) !important; }
+        .flow-risk-med { background: rgba(234, 179, 8, 0.15) !important; }
+        .flow-critical { background: rgba(220, 38, 38, 0.2) !important; }
+        .flow-detail-code { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body class="bg-[#0f0f23] text-gray-100 min-h-screen flex flex-col">
+
+    <header class="bg-[#1a1a2e] border-b border-[#2d3748] px-6 py-3 flex items-center justify-between">
+        <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+            <i class="fas fa-stream mr-2"></i>Mellow-Link Flow Monitor
+        </h1>
+        <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <span class="text-sm text-gray-400">실시간 자동 갱신</span>
+                <input type="checkbox" id="autoRefreshToggle" class="w-4 h-4 rounded text-cyan-500">
+            </label>
+            <button id="btnRefresh" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-sm transition">
+                <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- 왼쪽: 이벤트 타임라인 -->
+        <section class="w-1/2 flex flex-col border-r border-[#2d3748] overflow-hidden">
+            <div class="px-4 py-2 bg-[#1a1a2e] text-sm font-semibold text-cyan-300 border-b border-[#2d3748]">
+                최근 30분간의 생각의 흐름
+            </div>
+            <div id="flowTimeline" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        </section>
+
+        <!-- 오른쪽: 선택 이벤트 상세 -->
+        <section class="w-1/2 flex flex-col overflow-hidden">
+            <div class="px-4 py-2 bg-[#1a1a2e] text-sm font-semibold text-gray-300 border-b border-[#2d3748]">
+                상세 보기
+            </div>
+            <div id="flowDetail" class="flex-1 overflow-y-auto p-4 text-sm text-gray-300">
+                <p class="text-gray-500">타임라인에서 이벤트를 선택하세요.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function() {
+            const API_BASE = window.location.origin;
+            let token = null;
+            let autoRefreshInterval = null;
+            let events = [];
+
+            function getToken() {
+                if (token) return token;
+                token = localStorage.getItem('auth_token');
+                return token;
+            }
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c);
+            }
+
+            function getTypeIcon(ev) {
+                const t = ev.type || 'CHAT';
+                if (t === 'EVOLUTION' && ev.is_approved === false) return '🚫';
+                return { CHAT: '🤖', EVOLUTION: '🏛️', INSIGHT: '💡', GOAL: '🎯' }[t] || '•';
+            }
+
+            function getRowClass(ev) {
+                const cls = ['flow-timeline-row', 'px-3', 'py-2', 'rounded', 'border', 'border-transparent'];
+                if (ev.type === 'EVOLUTION' && ev.is_approved === false) cls.push('flow-critical');
+                else if (ev.type === 'EVOLUTION' && ev.risk_score != null) {
+                    const r = Number(ev.risk_score);
+                    if (r >= 70) cls.push('flow-risk-high');
+                    else if (r >= 40) cls.push('flow-risk-med');
+                }
+                return cls.join(' ');
+            }
+
+            function renderTimeline() {
+                const container = document.getElementById('flowTimeline');
+                if (!events || events.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm p-4">관리자 권한을 확인하거나, 첫 이벤트를 생성해주세요.</p>';
+                    return;
+                }
+                container.innerHTML = events.map((ev, i) => {
+                    const icon = getTypeIcon(ev);
+                    const timeStr = (ev.time || '').slice(11, 19) || (ev.time || '').slice(0, 8) || '';
+                    let summary = '';
+                    if (ev.type === 'CHAT') summary = (ev.task_intent || '').slice(0, 60) + ((ev.task_intent || '').length > 60 ? '...' : '');
+                    else if (ev.type === 'EVOLUTION') summary = (ev.target_file || ev.reason || '').slice(0, 60);
+                    else if (ev.type === 'INSIGHT') summary = (ev.finding || '').slice(0, 60) + '...';
+                    else if (ev.type === 'GOAL') summary = (ev.title || '').slice(0, 60);
+                    else summary = JSON.stringify(ev).slice(0, 50) + '...';
+                    const rowClass = getRowClass(ev);
+                    const riskBadge = ev.risk_score != null ? `<span class="text-xs text-red-300 ml-1">risk:${ev.risk_score}</span>` : '';
+                    return `<div class="${rowClass}" data-index="${i}">
+                        <span class="text-base mr-2">${icon}</span>
+                        <span class="text-gray-500 text-xs">${timeStr}</span>${riskBadge}
+                        <div class="text-gray-200 truncate mt-0.5">${escapeHtml(summary)}</div>
+                    </div>`;
+                }).join('');
+                container.querySelectorAll('.flow-timeline-row').forEach(row => {
+                    row.addEventListener('click', () => selectEvent(parseInt(row.dataset.index)));
+                });
+            }
+
+            function selectEvent(index) {
+                document.querySelectorAll('.flow-timeline-row').forEach(r => r.classList.remove('selected'));
+                const row = document.querySelector(`[data-index="${index}"]`);
+                if (row) row.classList.add('selected');
+                const ev = events[index];
+                const detail = document.getElementById('flowDetail');
+                if (!ev) {
+                    detail.innerHTML = '<p class="text-gray-500">이벤트를 찾을 수 없습니다.</p>';
+                    return;
+                }
+                let html = `<div class="space-y-3">`;
+                html += `<div><span class="text-gray-500">타입</span> ${getTypeIcon(ev)} ${escapeHtml(ev.type || '')}</div>`;
+                html += `<div><span class="text-gray-500">시간</span> ${escapeHtml(ev.time || '')}</div>`;
+                if (ev.type === 'CHAT') {
+                    html += `<div><span class="text-gray-500">의도</span><div class="mt-1">${escapeHtml(ev.task_intent || '')}</div></div>`;
+                    html += `<div><span class="text-gray-500">성공</span> ${ev.is_success ? '✅' : '❌'}</div>`;
+                    html += `<div><span class="text-gray-500">도구</span> ${escapeHtml((ev.used_tools || []).join(', ') || '(없음)')}</div>`;
+                    if (ev.error_message) html += `<div class="text-red-300"><span class="text-gray-500">오류</span> ${escapeHtml(ev.error_message)}</div>`;
+                } else if (ev.type === 'EVOLUTION') {
+                    html += `<div><span class="text-gray-500">대상 파일</span> <code class="text-cyan-300">${escapeHtml(ev.target_file || '')}</code></div>`;
+                    html += `<div><span class="text-gray-500">사유</span> ${escapeHtml(ev.reason || '')}</div>`;
+                    if (ev.is_approved === false && (ev.critique || '').trim()) {
+                        html += `<div class="mt-3 p-3 bg-red-900/30 rounded border border-red-500/50"><strong class="text-red-300">⚠️ 반려 사유</strong><div class="mt-2 text-red-200">${escapeHtml(ev.critique)}</div></div>`;
+                    }
+                    if (ev.risk_score != null) {
+                        const r = Math.max(0, Math.min(100, Number(ev.risk_score)));
+                        html += `<div><span class="text-gray-500">리스크 점수</span> <span class="font-mono">${r}</span><div class="mt-1 h-2 bg-[#2d3748] rounded overflow-hidden"><div class="h-full rounded transition-all ${r >= 70 ? 'bg-red-500' : r >= 40 ? 'bg-yellow-500' : 'bg-green-500'}" style="width:${r}%"></div></div></div>`;
+                    }
+                    if ((ev.proposed_code || '').trim()) {
+                        html += `<div><span class="text-gray-500">제안 코드</span><pre class="flow-detail-code mt-1 p-3 bg-black/40 rounded overflow-x-auto max-h-64 overflow-y-auto">${escapeHtml(ev.proposed_code)}</pre></div>`;
+                    }
+                } else if (ev.type === 'INSIGHT') {
+                    html += `<div><span class="text-gray-500">발견</span><div class="mt-1">${escapeHtml(ev.finding || '')}</div></div>`;
+                    html += `<div><span class="text-gray-500">권고</span> ${escapeHtml(ev.recommendation || '')}</div>`;
+                    html += `<div><span class="text-gray-500">신뢰도</span> ${Math.round((ev.confidence || 0) * 100)}%</div>`;
+                } else if (ev.type === 'GOAL') {
+                    html += `<div><span class="text-gray-500">제목</span> ${escapeHtml(ev.title || '')}</div>`;
+                    html += `<div><span class="text-gray-500">설명</span><div class="mt-1">${escapeHtml(ev.description || '')}</div></div>`;
+                    html += `<div><span class="text-gray-500">상태</span> ${escapeHtml(ev.status || '')}</div>`;
+                } else {
+                    html += `<pre class="flow-detail-code">${escapeHtml(JSON.stringify(ev, null, 2))}</pre>`;
+                }
+                html += `</div>`;
+                detail.innerHTML = html;
+            }
+
+            async function fetchFlow() {
+                const t = getToken();
+                if (!t) {
+                    document.getElementById('flowTimeline').innerHTML = '<p class="text-amber-400 text-sm p-4">관리자 권한을 확인하거나, 첫 이벤트를 생성해주세요.</p>';
+                    return;
+                }
+                try {
+                    const res = await fetch(`${API_BASE}/monitor/flow?minutes=30&limit=50`, {
+                        headers: { 'Authorization': `Bearer ${t}` }
+                    });
+                    if (!res.ok) {
+                        if (res.status === 403 || res.status === 401) {
+                            document.getElementById('flowTimeline').innerHTML = '<p class="text-amber-400 text-sm p-4">관리자 권한을 확인하거나, 첫 이벤트를 생성해주세요.</p>';
+                        } else {
+                            document.getElementById('flowTimeline').innerHTML = '<p class="text-red-400 text-sm p-4">조회 실패: ' + res.status + '</p>';
+                        }
+                        return;
+                    }
+                    const data = await res.json().catch(() => ({}));
+                    events = data.events || [];
+                    renderTimeline();
+                } catch (e) {
+                    console.error('[FlowMonitor]', e);
+                    document.getElementById('flowTimeline').innerHTML = '<p class="text-amber-400 text-sm p-4">관리자 권한을 확인하거나, 첫 이벤트를 생성해주세요.</p>';
+                }
+            }
+
+            document.getElementById('btnRefresh').addEventListener('click', fetchFlow);
+            document.getElementById('autoRefreshToggle').addEventListener('change', function() {
+                if (this.checked) {
+                    autoRefreshInterval = setInterval(fetchFlow, 15000);
+                    fetchFlow();
+                } else {
+                    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            });
+
+            fetchFlow();
+        })();
+    </script>
+</body>
+</html>

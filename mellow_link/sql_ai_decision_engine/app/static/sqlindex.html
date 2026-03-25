@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQL-AI Decision Engine Test UI</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --line: #d9deea;
+      --text: #1a2133;
+      --accent: #1f6feb;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 860px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .full {
+      grid-column: 1 / -1;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #3a4661;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    pre {
+      margin-top: 14px;
+      background: #0f172a;
+      color: #d7e2ff;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+      min-height: 200px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>SQL-AI Decision Engine MVP Test</h1>
+      <div class="grid">
+        <div>
+          <label for="inputType">input_type</label>
+          <select id="inputType">
+            <option value="natural_language">natural_language</option>
+            <option value="metric">metric</option>
+            <option value="table">table</option>
+            <option value="log">log</option>
+          </select>
+        </div>
+        <div>
+          <label for="segment">segment</label>
+          <select id="segment">
+            <option value="all">all</option>
+            <option value="premium">premium</option>
+            <option value="general">general</option>
+          </select>
+        </div>
+        <div class="full">
+          <label for="metrics">metrics (comma-separated)</label>
+          <input id="metrics" value="refund_rate,inquiry_growth" />
+        </div>
+        <div class="full">
+          <label for="query">query</label>
+          <textarea id="query">최근 환불 증가 원인을 분석해줘</textarea>
+        </div>
+        <div>
+          <label for="startDate">start_date</label>
+          <input id="startDate" type="date" value="2026-03-01" />
+        </div>
+        <div>
+          <label for="endDate">end_date</label>
+          <input id="endDate" type="date" value="2026-03-31" />
+        </div>
+      </div>
+
+      <button id="analyzeBtn" type="button">Analyze</button>
+      <pre id="result">응답 JSON이 여기에 표시됩니다.</pre>
+    </div>
+  </div>
+
+  <script>
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const resultEl = document.getElementById("result");
+
+    function buildPayload() {
+      const inputType = document.getElementById("inputType").value;
+      const query = document.getElementById("query").value.trim();
+      const metricsRaw = document.getElementById("metrics").value;
+      const segment = document.getElementById("segment").value;
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+
+      const metrics = metricsRaw
+        .split(",")
+        .map((m) => m.trim())
+        .filter(Boolean);
+
+      const payload = { input_type: inputType, segment };
+
+      if (query) payload.query = query;
+      if (metrics.length > 0) payload.metrics = metrics;
+      if (startDate && endDate) {
+        payload.period = { start: startDate, end: endDate };
+      }
+
+      if (inputType === "table") {
+        payload.table_name = "customer_metrics";
+      }
+      if (inputType === "log") {
+        payload.log_file_path = "logs/app.log";
+      }
+
+      return payload;
+    }
+
+    analyzeBtn.addEventListener("click", async () => {
+      const payload = buildPayload();
+      resultEl.textContent = "요청 중...";
+
+      try {
+        const response = await fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultEl.textContent = `요청 실패: ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+{
+  "project_id": "938b940d-9696-4225-9602-4910b41592ea",
+  "project_name": "언니의 손수건 3",
+  "created_at": "2026-01-26T23:11:05.213298",
+  "updated_at": "2026-01-26T23:11:11.080868",
+  "audio_file_path": "C:\\Users\\Hyein\\AppData\\Local\\Temp\\gradio\\b2c59aee5111aced6741d9637e1a8240ff3ea00d6f13f1ad309ece4fc402fb87\\언니의 손수건 3.mp3",
+  "audio_duration": 183.639979,
+  "lyrics_segments": [
+    {
+      "id": "456bd328",
+      "text": "새로운 내 바람은 진짜 언니가 되는 일 마다",
+      "start_time": 13.69,
+      "end_time": 18.48,
+      "confidence": 0.7204208374023438,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "51efebb0",
+      "text": "마음 깊은 곳에 조심히",
+      "start_time": 20.64,
+      "end_time": 23.68,
+      "confidence": 0.872314453125,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "8fe55037",
+      "text": "접어두었던 손수건 한",
+      "start_time": 26.58,
+      "end_time": 29.64,
+      "confidence": 0.9229058159722222,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "ddb61b99",
+      "text": "장을 받아들 한",
+      "start_time": 30.1,
+      "end_time": 34.71,
+      "confidence": 0.7177734375,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "d7cf1e54",
+      "text": "사람의 오래도록 품어주는 일",
+      "start_time": 39.4,
+      "end_time": 43.03,
+      "confidence": 0.7142969767252605,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "17818adf",
+      "text": "눈이 다가와 젖은 마음을 닦아내는 말을",
+      "start_time": 45.8,
+      "end_time": 49.92,
+      "confidence": 0.8725770738389756,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "f494eba5",
+      "text": "다듬지 않아도 위로를 서두르지 않아도",
+      "start_time": 54.1,
+      "end_time": 59.52,
+      "confidence": 0.9986470540364583,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "6ba3b02d",
+      "text": "피워낸 마음 위로",
+      "start_time": 59.94,
+      "end_time": 62.26,
+      "confidence": 0.8720703125,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "0a3518ff",
+      "text": "조용히 닿는 아정",
+      "start_time": 62.66,
+      "end_time": 65.54,
+      "confidence": 0.6571451822916666,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "a1b57e95",
+      "text": "그지않은 대신은",
+      "start_time": 75.65,
+      "end_time": 78.93,
+      "confidence": 0.6445068359375,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "1c2aa430",
+      "text": "진심에 온전히",
+      "start_time": 124.19,
+      "end_time": 150.97,
+      "confidence": 0.8070220947265625,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "0bd3a103",
+      "text": "애매해 본다",
+      "start_time": 152.07,
+      "end_time": 153.71,
+      "confidence": 0.8406982421875,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    }
+  ],
+  "images": {},
+  "video_clips": {},
+  "final_video_path": null,
+  "metadata": {
+    "title": "언니의 손수건 3",
+    "artist": "",
+    "song_title": "",
+    "lyricist": "",
+    "composer": "",
+    "mood": "",
+    "story_description": "",
+    "translations": {}
+  },
+  "current_state": "AUDIO_REVIEW",
+  "state_history": [
+    {
+      "from": "INIT",
+      "to": "AUDIO_ANALYSIS",
+      "timestamp": "2026-01-26T23:11:05.329533",
+      "details": {
+        "trigger": "start"
+      }
+    },
+    {
+      "from": "AUDIO_ANALYSIS",
+      "to": "AUDIO_REVIEW",
+      "timestamp": "2026-01-26T23:11:11.080868",
+      "details": {
+        "trigger": "analysis_complete"
+      }
+    }
+  ]
+}

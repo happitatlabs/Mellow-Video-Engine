@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User Console | Mellow-Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[linear-gradient(180deg,_#07111f,_#020617)] text-slate-100">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-teal-300/80">User Console</p>
+                <h1 class="text-3xl font-semibold mt-2">실행 진행 뷰</h1>
+                <p class="text-slate-400 mt-2">run 상태, 진행률, todo, activity, 결과만 보여줍니다. 내부 디버그 데이터는 포함하지 않습니다.</p>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-sm">
+                <a id="linkHome" href="/ui" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Home</a>
+                <a id="linkRuns" href="/runs" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Runs</a>
+            </nav>
+        </header>
+
+        <div id="connectBar" class="rounded-3xl border border-white/10 bg-slate-900/60 p-5 mb-6">
+            <div class="flex flex-wrap gap-3 items-center">
+                <select id="recentRuns" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm min-w-[220px]">
+                    <option value="">최근 run 선택</option>
+                </select>
+                <input id="runIdInput" type="text" placeholder="run_id 입력" class="flex-1 min-w-[240px] rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                <button id="btnConnect" class="px-5 py-3 rounded-xl bg-teal-400 text-slate-950 font-medium hover:bg-teal-300">Open</button>
+            </div>
+        </div>
+
+        <div id="emptyState" class="rounded-3xl border border-dashed border-white/10 px-6 py-16 text-center text-slate-500">
+            run_id를 선택하거나 입력하면 사용자 실행 뷰를 엽니다.
+        </div>
+
+        <main id="consoleView" class="hidden grid xl:grid-cols-[0.9fr_1.1fr] gap-6">
+            <section class="space-y-6">
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Run Status</p>
+                            <h2 id="runIdLabel" class="mt-2 font-mono text-lg text-teal-300">-</h2>
+                            <p id="runMeta" class="mt-2 text-sm text-slate-400">-</p>
+                        </div>
+                        <span id="statusBadge" class="px-3 py-1 rounded-full text-xs border border-white/10 bg-slate-800 text-slate-300">idle</span>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <div class="flex items-center justify-between gap-4 mb-4">
+                        <h2 class="text-lg font-medium">진행률</h2>
+                        <span id="progressText" class="text-sm text-teal-300">0%</span>
+                    </div>
+                    <div class="h-3 rounded-full bg-slate-800 overflow-hidden">
+                        <div id="progressBar" class="h-full bg-gradient-to-r from-teal-400 to-cyan-300 transition-all duration-500" style="width:0%"></div>
+                    </div>
+                    <p id="currentStep" class="mt-4 text-sm text-slate-300">현재 단계 정보가 없습니다.</p>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">Todo Checklist</h2>
+                    <div id="todoList" class="space-y-3">
+                        <div class="text-sm text-slate-500">run 연결 후 todo가 표시됩니다.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-6">
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">최근 Activity</h2>
+                    <div id="activityList" class="space-y-3">
+                        <div class="text-sm text-slate-500">activity가 아직 없습니다.</div>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">중간 결과 / 최종 결과</h2>
+                    <div id="resultSummary" class="text-sm text-slate-300 leading-7 whitespace-pre-wrap break-words max-h-[28rem] overflow-y-auto">
+                        결과 요약이 아직 없습니다.
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        const state = {
+            runId: null,
+            snapshot: null,
+            events: [],
+            activity: [],
+            summary: '',
+            pollTimer: null,
+            lastEventId: null,
+        };
+
+        function authHeaders() {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+
+        function statusTone(status) {
+            if (status === 'completed') return 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300';
+            if (status === 'running') return 'bg-teal-500/10 border-teal-400/20 text-teal-300';
+            if (status === 'failed') return 'bg-rose-500/10 border-rose-400/20 text-rose-300';
+            return 'bg-slate-800 border-white/10 text-slate-300';
+        }
+
+        function summarizeActivity(events) {
+            return events.slice(-12).reverse().map(function (ev) {
+                const p = ev.payload || {};
+                if (ev.type === 'todo_started') return { tone: 'text-cyan-300', text: '진행 중: ' + (p.title || p.todo_id || '-') };
+                if (ev.type === 'todo_done') return { tone: 'text-emerald-300', text: '완료: ' + (p.title || p.todo_id || '-') };
+                if (ev.type === 'tool_started') return { tone: 'text-slate-300', text: '도구 사용: ' + (p.tool_name || '-') };
+                if (ev.type === 'run_finished') return { tone: p.success === false ? 'text-rose-300' : 'text-emerald-300', text: p.summary || (p.success === false ? '실행 실패' : '실행 완료') };
+                if (ev.type === 'error') return { tone: 'text-rose-300', text: p.message || '오류 발생' };
+                if (ev.type === 'plan_created') return { tone: 'text-slate-300', text: '계획 생성: ' + ((p.todos || []).length) + '개 단계' };
+                return null;
+            }).filter(Boolean);
+        }
+
+        function renderSnapshot() {
+            const snap = state.snapshot;
+            if (!snap) return;
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('connectBar').classList.add('hidden');
+            document.getElementById('consoleView').classList.remove('hidden');
+
+            document.getElementById('runIdLabel').textContent = snap.run_id || '-';
+            document.getElementById('runMeta').textContent = (snap.created_at ? new Date(snap.created_at).toLocaleString() : '-') + ' · ' + (snap.module_id || 'engine') + ' · ' + (snap.run_kind || 'generic') + ' · ' + (snap.status || '-');
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'px-3 py-1 rounded-full text-xs border ' + statusTone(snap.status);
+            badge.textContent = snap.status || 'idle';
+
+            const todos = Array.isArray(snap.todos_view) ? snap.todos_view : [];
+            const current = todos.find(function (todo) { return (todo.status || '') === 'in_progress'; });
+            const pct = typeof snap.progress_percent === 'number' ? snap.progress_percent : 0;
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('progressText').textContent = pct + '%';
+            document.getElementById('currentStep').textContent = current ? ('현재 단계: ' + (current.title || current.id)) : '현재 진행 중인 단계가 없습니다.';
+
+            const todoList = document.getElementById('todoList');
+            if (!todos.length) {
+                todoList.innerHTML = '<div class="text-sm text-slate-500">todo가 없습니다.</div>';
+            } else {
+                todoList.innerHTML = todos.map(function (todo, index) {
+                    const status = (todo.status || 'pending');
+                    const tone = status === 'completed'
+                        ? 'border-emerald-400/20 bg-emerald-500/5 text-emerald-200'
+                        : status === 'in_progress'
+                            ? 'border-cyan-400/20 bg-cyan-500/5 text-cyan-100'
+                            : status === 'skipped'
+                                ? 'border-slate-400/20 bg-slate-500/5 text-slate-200'
+                                : status === 'aborted'
+                                    ? 'border-rose-400/20 bg-rose-500/5 text-rose-200'
+                                    : 'border-white/10 bg-slate-950/50 text-slate-300';
+                    const label = todo.title || todo.id || ('Step ' + (index + 1));
+                    return '<div class="rounded-2xl border px-4 py-3 ' + tone + '">' +
+                        '<div class="flex items-center justify-between gap-3">' +
+                        '<span class="text-sm">' + label + '</span>' +
+                        '<span class="text-xs uppercase tracking-[0.2em]">' + status + '</span>' +
+                        '</div></div>';
+                }).join('');
+            }
+
+            const activity = summarizeActivity(state.events);
+            const activityList = document.getElementById('activityList');
+            activityList.innerHTML = activity.length
+                ? activity.map(function (item) { return '<div class="rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm ' + item.tone + '">' + item.text + '</div>'; }).join('')
+                : '<div class="text-sm text-slate-500">activity가 아직 없습니다.</div>';
+
+            document.getElementById('resultSummary').textContent = (snap.summary || state.summary || '결과 요약이 아직 없습니다.');
+        }
+
+        async function loadSnapshot(runId) {
+            const res = await fetch(API + '/runs/' + encodeURIComponent(runId), { headers: authHeaders() });
+            if (!res.ok) throw new Error('snapshot failed');
+            state.snapshot = await res.json();
+            renderSnapshot();
+        }
+
+        async function loadEvents(runId) {
+            const res = await fetch(API + '/runs/' + encodeURIComponent(runId) + '/events?format=json', { headers: authHeaders() });
+            if (!res.ok) throw new Error('events failed');
+            const data = await res.json();
+            state.events = data.events || [];
+            if (state.events.length) state.lastEventId = state.events[state.events.length - 1].id;
+            const finished = state.events.find(function (ev) { return ev.type === 'run_finished'; });
+            state.summary = finished && finished.payload ? (finished.payload.summary || '') : '';
+            if (finished && state.snapshot) {
+                state.snapshot.status = finished.payload && finished.payload.success === false ? 'failed' : 'completed';
+                if (finished.payload && finished.payload.summary) {
+                    state.snapshot.summary = finished.payload.summary;
+                }
+            }
+            renderSnapshot();
+            return !!finished;
+        }
+
+        function stopPolling() {
+            if (state.pollTimer) {
+                clearTimeout(state.pollTimer);
+                state.pollTimer = null;
+            }
+        }
+
+        async function pollEvents(runId) {
+            try {
+                const params = new URLSearchParams();
+                params.set('format', 'json');
+                if (state.lastEventId != null) params.set('last_event_id', state.lastEventId);
+                const res = await fetch(API + '/runs/' + encodeURIComponent(runId) + '/events?' + params.toString(), {
+                    headers: authHeaders()
+                });
+                if (!res.ok) throw new Error('poll failed');
+                const data = await res.json();
+                const newEvents = Array.isArray(data.events) ? data.events : [];
+                if (newEvents.length) {
+                    newEvents.forEach(function (payload) {
+                        state.events.push(payload);
+                        state.lastEventId = payload.id != null ? payload.id : state.lastEventId;
+                        if (payload.type === 'run_finished' && payload.payload) {
+                            state.summary = payload.payload.summary || state.summary;
+                        }
+                    });
+                    await loadSnapshot(runId);
+                }
+                if (state.snapshot && (state.snapshot.status === 'completed' || state.snapshot.status === 'failed')) {
+                    stopPolling();
+                    return;
+                }
+            } catch (error) {
+                console.warn(error);
+            }
+            state.pollTimer = setTimeout(function () { pollEvents(runId); }, 1000);
+        }
+
+        async function useRun(runId) {
+            state.runId = runId;
+            state.events = [];
+            state.summary = '';
+            state.lastEventId = null;
+            stopPolling();
+            await loadSnapshot(runId);
+            const hasFinishedEvent = await loadEvents(runId);
+            if (hasFinishedEvent) {
+                await loadSnapshot(runId);
+                return;
+            }
+            if (state.snapshot && state.snapshot.status === 'running') {
+                state.pollTimer = setTimeout(function () { pollEvents(runId); }, 1000);
+            }
+        }
+
+        async function loadRecentRuns() {
+            const res = await fetch(API + '/runs?limit=20', { headers: authHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            const sel = document.getElementById('recentRuns');
+            sel.innerHTML = '<option value="">최근 run 선택</option>';
+            (data.runs || []).forEach(function (run) {
+                const opt = document.createElement('option');
+                opt.value = run.run_id;
+                opt.textContent = run.run_id + ' [' + (run.status || '-') + ']';
+                sel.appendChild(opt);
+            });
+        }
+
+        document.getElementById('btnConnect').addEventListener('click', function () {
+            const runId = (document.getElementById('runIdInput').value || '').trim();
+            if (!runId) return;
+            useRun(runId).catch(console.warn);
+        });
+        document.getElementById('recentRuns').addEventListener('change', function () {
+            const runId = this.value;
+            if (!runId) return;
+            document.getElementById('runIdInput').value = runId;
+            useRun(runId).catch(console.warn);
+        });
+        window.addEventListener('beforeunload', stopPolling);
+
+        loadRecentRuns().catch(console.warn);
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get('run_id');
+        if (runId) {
+            document.getElementById('runIdInput').value = runId;
+            useRun(runId).catch(console.warn);
+        }
+    </script>
+</body>
+</html>

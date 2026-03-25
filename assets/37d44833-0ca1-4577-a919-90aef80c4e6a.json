@@ -1,0 +1,138 @@
+{
+  "project_id": "37d44833-0ca1-4577-a919-90aef80c4e6a",
+  "project_name": "언니의 손수건 3",
+  "created_at": "2026-01-27T01:53:55.172712",
+  "updated_at": "2026-01-27T01:54:01.113071",
+  "audio_file_path": "C:\\Users\\Hyein\\AppData\\Local\\Temp\\gradio\\b2c59aee5111aced6741d9637e1a8240ff3ea00d6f13f1ad309ece4fc402fb87\\언니의 손수건 3.mp3",
+  "audio_duration": 183.639979,
+  "lyrics_segments": [
+    {
+      "id": "d80f0a0a",
+      "text": "배경음악이 커도 가사입니다. 배경음악이 커도 가사입니다.",
+      "start_time": 15.69,
+      "end_time": 23.07,
+      "confidence": 0.4226415114270316,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "df130a64",
+      "text": "배경음악이 커도 가사입니다.",
+      "start_time": 25.84,
+      "end_time": 28.06,
+      "confidence": 0.95400390625,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "7fcba460",
+      "text": "배경음악이 커도 가사입니다.",
+      "start_time": 38.64,
+      "end_time": 42.44,
+      "confidence": 0.960205078125,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "d96961f9",
+      "text": "배경음악이 커도",
+      "start_time": 42.98,
+      "end_time": 48.62,
+      "confidence": 0.9472412109375,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "3029c969",
+      "text": "가사입니다. 배경음악이 커도 가사입니다.",
+      "start_time": 52.4,
+      "end_time": 59.28,
+      "confidence": 0.34260741472244266,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "337f3467",
+      "text": "배경음악이 커도 가사입니다.",
+      "start_time": 60.64,
+      "end_time": 62.84,
+      "confidence": 0.81329345703125,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "2be30312",
+      "text": "배경음악이 커도 가사입니다.",
+      "start_time": 64.32,
+      "end_time": 75.24,
+      "confidence": 0.9339274088541667,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    },
+    {
+      "id": "9f6ec67b",
+      "text": "배경음악이 커도 가사입니다.",
+      "start_time": 152.16,
+      "end_time": 153.64,
+      "confidence": 0.9615017361111112,
+      "is_modified": false,
+      "original_text": null,
+      "image_prompt": null,
+      "assigned_image_id": null,
+      "assigned_video_id": null
+    }
+  ],
+  "images": {},
+  "video_clips": {},
+  "final_video_path": null,
+  "metadata": {
+    "title": "언니의 손수건 3",
+    "artist": "",
+    "song_title": "언니의 손수건",
+    "lyricist": "",
+    "composer": "",
+    "mood": "따뜻함, 그리움",
+    "story_description": "",
+    "translations": {}
+  },
+  "current_state": "AUDIO_REVIEW",
+  "state_history": [
+    {
+      "from": "INIT",
+      "to": "AUDIO_ANALYSIS",
+      "timestamp": "2026-01-27T01:53:55.302953",
+      "details": {
+        "trigger": "start"
+      }
+    },
+    {
+      "from": "AUDIO_ANALYSIS",
+      "to": "AUDIO_REVIEW",
+      "timestamp": "2026-01-27T01:54:01.113071",
+      "details": {
+        "trigger": "analysis_complete"
+      }
+    }
+  ]
+}

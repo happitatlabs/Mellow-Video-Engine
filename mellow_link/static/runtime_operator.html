@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Operator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[linear-gradient(180deg,_#120b07,_#020617)] text-slate-100">
+    <div class="max-w-5xl mx-auto px-6 py-8">
+        <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-amber-300/80">Runtime Ops</p>
+                <h1 class="text-4xl font-semibold mt-2">Minimal Operator Status</h1>
+                <p class="text-slate-400 mt-2">이 화면은 `GET /runtime/status`만 사용합니다.</p>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-sm">
+                <a href="/ui" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Home</a>
+                <a href="/runtime-console" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Runtime Chat</a>
+                <a href="/operator-console" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Legacy Operator</a>
+            </nav>
+        </header>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6 mb-6">
+            <div class="flex flex-wrap items-end gap-3">
+                <div class="flex-1 min-w-[280px]">
+                    <label class="text-xs uppercase tracking-[0.2em] text-slate-500">Runtime API Base</label>
+                    <input id="runtimeBase" type="text" class="mt-2 w-full rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm" placeholder="http://127.0.0.1:8010">
+                </div>
+                <button id="saveBaseBtn" class="px-4 py-3 rounded-xl bg-amber-400 text-slate-950 font-medium hover:bg-amber-300">Save</button>
+                <button id="refreshBtn" class="px-4 py-3 rounded-xl border border-white/10 hover:bg-white/5">Refresh</button>
+            </div>
+        </section>
+
+        <main class="grid md:grid-cols-2 gap-6">
+            <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                <h2 class="text-xl font-medium mb-4">Runtime</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Impl</div><div id="runtimeImpl" class="mt-2 text-amber-300">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Version</div><div id="runtimeVersion" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Uptime</div><div id="runtimeUptime" class="mt-2">-</div></div>
+                </div>
+            </section>
+            <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                <h2 class="text-xl font-medium mb-4">Health</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">System State</div><div id="systemState" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Degraded</div><div id="degradedState" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Last Error</div><div id="lastError" class="mt-2 whitespace-pre-wrap break-words">-</div></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const DEFAULT_RUNTIME_BASE = 'http://127.0.0.1:8010';
+        const state = { runtimeBase: localStorage.getItem('runtimeApiBase') || DEFAULT_RUNTIME_BASE };
+        function el(id) { return document.getElementById(id); }
+        function runtimeUrl(path) { return state.runtimeBase.replace(/\/$/, '') + path; }
+        async function refreshStatus() {
+            try {
+                const res = await fetch(runtimeUrl('/runtime/status'), { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ? data.error.message : 'status failed');
+                el('runtimeImpl').textContent = data.runtime.impl;
+                el('runtimeVersion').textContent = data.runtime.version;
+                el('runtimeUptime').textContent = Math.round(data.runtime.uptime_sec) + 's';
+                el('systemState').textContent = data.health.system_state;
+                el('degradedState').textContent = data.health.degraded ? 'true' : 'false';
+                el('lastError').textContent = data.health.last_error || '-';
+            } catch (error) {
+                el('lastError').textContent = error.message || String(error);
+                el('runtimeImpl').textContent = 'unreachable';
+            }
+        }
+        function bootstrap() {
+            el('runtimeBase').value = state.runtimeBase;
+            el('saveBaseBtn').addEventListener('click', function () {
+                state.runtimeBase = el('runtimeBase').value.trim() || DEFAULT_RUNTIME_BASE;
+                localStorage.setItem('runtimeApiBase', state.runtimeBase);
+                refreshStatus();
+            });
+            el('refreshBtn').addEventListener('click', refreshStatus);
+            refreshStatus();
+            setInterval(refreshStatus, 5000);
+        }
+        bootstrap();
+    </script>
+</body>
+</html>

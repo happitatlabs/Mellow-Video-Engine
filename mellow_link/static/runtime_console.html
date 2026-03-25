@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Runtime Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[radial-gradient(circle_at_top,_#152238,_#020617_60%)] text-slate-100">
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-sky-300/80">Runtime Chat</p>
+                <h1 class="text-4xl font-semibold mt-2">Turn Contract Console</h1>
+                <p class="text-slate-400 mt-2">이 화면은 `POST /runtime/turn`, `GET /runtime/status`만 사용합니다.</p>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-sm">
+                <a href="/ui" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Home</a>
+                <a href="/runtime-operator" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Runtime Ops</a>
+                <a href="/index.html" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Legacy Chat</a>
+            </nav>
+        </header>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6 mb-6 grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs uppercase tracking-[0.2em] text-slate-500">Runtime API Base</label>
+                    <div class="mt-2 flex gap-3">
+                        <input id="runtimeBase" type="text" class="flex-1 rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm" placeholder="http://127.0.0.1:8010">
+                        <button id="saveBaseBtn" class="px-4 py-3 rounded-xl bg-sky-400 text-slate-950 font-medium hover:bg-sky-300">Save</button>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-3 gap-3">
+                    <input id="sessionId" type="text" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm" placeholder="session_id">
+                    <input id="userId" type="text" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm" placeholder="user.id">
+                    <select id="modelTier" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                        <option value="free">free</option>
+                        <option value="pro">pro</option>
+                        <option value="auto">auto</option>
+                    </select>
+                </div>
+                <textarea id="messageInput" rows="4" class="w-full rounded-2xl bg-slate-950/70 border border-white/10 px-4 py-4 text-sm" placeholder="메시지를 입력하세요"></textarea>
+                <div class="flex flex-wrap gap-3 items-center">
+                    <button id="sendBtn" class="px-5 py-3 rounded-xl bg-sky-400 text-slate-950 font-medium hover:bg-sky-300">Send Turn</button>
+                    <span id="requestMeta" class="text-sm text-slate-400">ready</span>
+                </div>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Runtime Status</p>
+                        <h2 id="runtimeImpl" class="mt-2 text-xl text-sky-300 font-semibold">-</h2>
+                    </div>
+                    <button id="refreshStatusBtn" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5 text-sm">Refresh</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-5 text-sm">
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3"><div class="text-slate-500 text-xs uppercase">State</div><div id="systemState" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Degraded</div><div id="degradedState" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Version</div><div id="runtimeVersion" class="mt-2">-</div></div>
+                    <div class="rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3"><div class="text-slate-500 text-xs uppercase">Uptime</div><div id="runtimeUptime" class="mt-2">-</div></div>
+                </div>
+                <div class="mt-4 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm">
+                    <div class="text-slate-500 text-xs uppercase">Last Error</div>
+                    <div id="lastError" class="mt-2 whitespace-pre-wrap break-words text-slate-300">-</div>
+                </div>
+            </div>
+        </section>
+
+        <main class="grid xl:grid-cols-[0.9fr_1.1fr] gap-6">
+            <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <h2 class="text-xl font-medium">Conversation</h2>
+                    <span class="text-sm text-slate-500">render source: turn.speech / turn.passage / turn.ooc / turn.clarify</span>
+                </div>
+                <div id="messageList" class="space-y-4 min-h-[28rem]"></div>
+            </section>
+            <section class="space-y-6">
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">Turn State</h2>
+                    <div id="turnState" class="text-sm text-slate-300 whitespace-pre-wrap break-words">아직 turn이 없습니다.</div>
+                </div>
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">Trace</h2>
+                    <div id="traceBox" class="text-sm text-slate-300 whitespace-pre-wrap break-words">trace_id가 여기에 표시됩니다.</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const DEFAULT_RUNTIME_BASE = 'http://127.0.0.1:8010';
+        const state = {
+            runtimeBase: localStorage.getItem('runtimeApiBase') || DEFAULT_RUNTIME_BASE,
+            sessionId: localStorage.getItem('runtimeSessionId') || 'runtime_demo_session',
+            userId: localStorage.getItem('runtimeUserId') || 'runtime_demo_user',
+        };
+
+        function el(id) { return document.getElementById(id); }
+        function esc(text) {
+            return String(text ?? '').replace(/[&<>"']/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+            });
+        }
+        function runtimeUrl(path) {
+            return state.runtimeBase.replace(/\/$/, '') + path;
+        }
+        function setStatusText(text, isError) {
+            const meta = el('requestMeta');
+            meta.textContent = text;
+            meta.className = 'text-sm ' + (isError ? 'text-rose-300' : 'text-slate-400');
+        }
+        function renderMessage(role, title, body, tone) {
+            return '<div class="rounded-3xl border border-white/10 ' + tone + ' px-5 py-4">' +
+                '<div class="text-xs uppercase tracking-[0.2em] text-slate-500">' + esc(role) + '</div>' +
+                '<div class="mt-2 text-lg font-medium">' + esc(title) + '</div>' +
+                '<div class="mt-3 text-sm leading-7 whitespace-pre-wrap break-words">' + body + '</div>' +
+                '</div>';
+        }
+        function appendUserMessage(text) {
+            const list = el('messageList');
+            list.insertAdjacentHTML('beforeend', renderMessage('User', 'input.text', esc(text), 'bg-slate-950/50'));
+        }
+        function appendTurn(turn) {
+            const blocks = [];
+            blocks.push('<div><div class="text-slate-500 text-xs uppercase tracking-[0.15em]">speech</div><div class="mt-2">' + esc(turn.speech) + '</div></div>');
+            blocks.push('<div class="mt-4"><div class="text-slate-500 text-xs uppercase tracking-[0.15em]">passage</div><div class="mt-2">' + esc(turn.passage || '-') + '</div></div>');
+            blocks.push('<div class="mt-4"><div class="text-slate-500 text-xs uppercase tracking-[0.15em]">ooc</div><div class="mt-2">' + esc(turn.ooc || '-') + '</div></div>');
+            if (turn.clarify) {
+                const options = Array.isArray(turn.clarify.options) ? turn.clarify.options : [];
+                const optionButtons = options.map(function (option) {
+                    return '<button class="clarify-option px-3 py-2 rounded-full border border-white/10 hover:bg-white/5 text-sm" data-option="' + esc(option) + '">' + esc(option) + '</button>';
+                }).join(' ');
+                blocks.push('<div class="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/5 px-4 py-4"><div class="text-amber-300 text-xs uppercase tracking-[0.15em]">clarify</div><div class="mt-2">' + esc(turn.clarify.question || '-') + '</div><div class="mt-1 text-sm text-slate-400">reason: ' + esc(turn.clarify.reason || '-') + '</div><div class="mt-3 flex flex-wrap gap-2">' + optionButtons + '</div></div>');
+            } else {
+                blocks.push('<div class="mt-4"><div class="text-slate-500 text-xs uppercase tracking-[0.15em]">clarify</div><div class="mt-2">-</div></div>');
+            }
+            const list = el('messageList');
+            list.insertAdjacentHTML('beforeend', renderMessage('Assistant', 'turn', blocks.join(''), 'bg-slate-900/70'));
+            list.querySelectorAll('.clarify-option').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    el('messageInput').value = button.dataset.option || '';
+                    el('messageInput').focus();
+                });
+            });
+        }
+        function renderTurnState(response) {
+            el('turnState').textContent = JSON.stringify(response.state, null, 2);
+            el('traceBox').textContent = JSON.stringify(response.meta, null, 2);
+        }
+        async function refreshStatus() {
+            try {
+                const res = await fetch(runtimeUrl('/runtime/status'), { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ? data.error.message : 'status failed');
+                el('runtimeImpl').textContent = data.runtime.impl;
+                el('systemState').textContent = data.health.system_state;
+                el('degradedState').textContent = data.health.degraded ? 'true' : 'false';
+                el('runtimeVersion').textContent = data.runtime.version;
+                el('runtimeUptime').textContent = Math.round(data.runtime.uptime_sec) + 's';
+                el('lastError').textContent = data.health.last_error || '-';
+            } catch (error) {
+                el('runtimeImpl').textContent = 'unreachable';
+                el('lastError').textContent = error.message || String(error);
+            }
+        }
+        async function sendTurn() {
+            const text = el('messageInput').value.trim();
+            if (!text) {
+                setStatusText('메시지를 입력하세요.', true);
+                return;
+            }
+            state.sessionId = el('sessionId').value.trim() || state.sessionId;
+            state.userId = el('userId').value.trim() || state.userId;
+            localStorage.setItem('runtimeSessionId', state.sessionId);
+            localStorage.setItem('runtimeUserId', state.userId);
+            appendUserMessage(text);
+            setStatusText('turn 전송 중...', false);
+            try {
+                const res = await fetch(runtimeUrl('/runtime/turn'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: state.sessionId,
+                        user: { id: state.userId },
+                        input: { text: text },
+                        context: {
+                            character_id: 'default',
+                            model_tier_requested: el('modelTier').value,
+                            client_turn_id: 'web_' + Date.now(),
+                        },
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    const message = data.error ? data.error.message + ' / ' + data.error.trace_id : 'turn failed';
+                    throw new Error(message);
+                }
+                appendTurn(data.turn);
+                renderTurnState(data);
+                setStatusText('turn 완료: ' + data.meta.trace_id, false);
+                el('messageInput').value = '';
+                await refreshStatus();
+            } catch (error) {
+                setStatusText(error.message || String(error), true);
+            }
+        }
+        function bootstrap() {
+            el('runtimeBase').value = state.runtimeBase;
+            el('sessionId').value = state.sessionId;
+            el('userId').value = state.userId;
+            el('saveBaseBtn').addEventListener('click', function () {
+                state.runtimeBase = el('runtimeBase').value.trim() || DEFAULT_RUNTIME_BASE;
+                localStorage.setItem('runtimeApiBase', state.runtimeBase);
+                refreshStatus();
+            });
+            el('refreshStatusBtn').addEventListener('click', refreshStatus);
+            el('sendBtn').addEventListener('click', sendTurn);
+            el('messageInput').addEventListener('keydown', function (event) {
+                if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') sendTurn();
+            });
+            refreshStatus();
+            setInterval(refreshStatus, 5000);
+        }
+        bootstrap();
+    </script>
+</body>
+</html>

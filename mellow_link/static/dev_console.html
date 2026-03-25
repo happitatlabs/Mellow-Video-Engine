@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dev Console | Mellow-Link</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[linear-gradient(180deg,_#07111d,_#020617)] text-slate-100">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <header class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-fuchsia-300/80">Dev Console</p>
+                <h1 class="text-3xl font-semibold mt-2">특정 run 디버깅 뷰</h1>
+                <p class="text-slate-400 mt-2">특정 run의 디버그 정보만 다룹니다. 비교와 운영 제어는 다른 화면에서 처리합니다.</p>
+            </div>
+            <nav class="flex flex-wrap gap-2 text-sm">
+                <a href="/dev-dashboard" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Dashboard</a>
+                <a id="linkOperator" href="/operator-console" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Operator</a>
+                <a id="linkRuns" href="/runs" class="px-4 py-2 rounded-full border border-white/10 hover:bg-white/5">Runs</a>
+            </nav>
+        </header>
+
+        <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-5 mb-6">
+            <div class="flex flex-wrap gap-3">
+                <select id="recentRuns" class="rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm min-w-[240px]">
+                    <option value="">최근 run 선택</option>
+                </select>
+                <input id="runIdInput" type="text" placeholder="run_id 입력" class="flex-1 min-w-[280px] rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-sm">
+                <button id="btnOpen" class="px-5 py-3 rounded-xl bg-fuchsia-400 text-slate-950 font-medium hover:bg-fuchsia-300">Open</button>
+            </div>
+        </section>
+
+        <div id="emptyState" class="rounded-3xl border border-dashed border-white/10 px-6 py-16 text-center text-slate-500">
+            디버깅할 run을 선택하거나 입력하세요.
+        </div>
+
+        <main id="consoleView" class="hidden space-y-6">
+            <section class="grid xl:grid-cols-[0.8fr_0.6fr_0.6fr] gap-6">
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Run</p>
+                            <h2 id="runIdLabel" class="mt-2 font-mono text-lg text-fuchsia-300">-</h2>
+                            <p id="runMeta" class="mt-2 text-sm text-slate-400">-</p>
+                        </div>
+                        <span id="statusBadge" class="px-3 py-1 rounded-full text-xs border border-white/10 bg-slate-800 text-slate-300">idle</span>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-4 mt-5 text-sm">
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Module</div>
+                            <div id="moduleLabel" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Run Kind</div>
+                            <div id="runKindLabel" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Selected Mode</div>
+                            <div id="modeLabel" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Health</div>
+                            <div id="healthLabel" class="mt-2 text-slate-200">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">Debug Summary</h2>
+                    <div class="space-y-3 text-sm">
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 flex items-center justify-between gap-4">
+                            <span class="text-slate-400">Event Count</span>
+                            <span id="eventCountLabel" class="text-slate-200">-</span>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 flex items-center justify-between gap-4">
+                            <span class="text-slate-400">Tool Events</span>
+                            <span id="toolCountLabel" class="text-slate-200">-</span>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 flex items-center justify-between gap-4">
+                            <span class="text-slate-400">Prompt / Response</span>
+                            <span id="promptCountLabel" class="text-slate-200">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 class="text-lg font-medium mb-4">Error Detail</h2>
+                    <div id="errorBox" class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-4 text-sm text-slate-300 whitespace-pre-wrap break-words min-h-[13rem]">
+                        에러가 없습니다.
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid xl:grid-cols-2 gap-6">
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 id="stepTraceTitle" class="text-lg font-medium mb-4">Step Trace</h2>
+                    <div id="stepTrace" class="space-y-3">
+                        <div class="text-sm text-slate-500">step trace가 없습니다.</div>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <h2 id="toolUsageTitle" class="text-lg font-medium mb-4">Tool Usage</h2>
+                    <div id="toolUsage" class="space-y-3">
+                        <div class="text-sm text-slate-500">tool usage가 없습니다.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                <div class="flex flex-wrap gap-2 mb-5">
+                    <button data-tab="events" class="tab-btn px-4 py-2 rounded-full border border-white/10 bg-white/5 text-sm">Raw Events</button>
+                    <button data-tab="prompts" class="tab-btn px-4 py-2 rounded-full border border-white/10 text-sm">Prompt / Response</button>
+                    <button data-tab="snapshot" class="tab-btn px-4 py-2 rounded-full border border-white/10 text-sm">Raw Snapshot</button>
+                </div>
+                <div id="tabEvents" class="tab-panel">
+                    <pre id="rawEvents" class="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-xs leading-6 text-slate-300 overflow-x-auto max-h-[34rem] overflow-y-auto">[]</pre>
+                </div>
+                <div id="tabPrompts" class="tab-panel hidden">
+                    <div id="promptResponseList" class="space-y-4">
+                        <div class="text-sm text-slate-500">prompt/response 이벤트가 없습니다.</div>
+                    </div>
+                </div>
+                <div id="tabSnapshot" class="tab-panel hidden">
+                    <pre id="rawSnapshot" class="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-xs leading-6 text-slate-300 overflow-x-auto max-h-[34rem] overflow-y-auto">{}</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        const state = { runId: null, snapshot: null, raw: null, events: [] };
+
+        function authHeaders() {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            return headers;
+        }
+
+        function statusTone(status) {
+            if (status === 'completed') return 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300';
+            if (status === 'running') return 'bg-fuchsia-500/10 border-fuchsia-400/20 text-fuchsia-300';
+            if (status === 'failed') return 'bg-rose-500/10 border-rose-400/20 text-rose-300';
+            return 'bg-slate-800 border-white/10 text-slate-300';
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatTs(value) {
+            if (value == null) return '-';
+            if (typeof value === 'number') return new Date(value * 1000).toLocaleString();
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+        }
+
+        function summarizeHealth(health) {
+            if (!health || typeof health !== 'object') return '-';
+            const parts = [];
+            if (health.status) parts.push('status ' + health.status);
+            if (health.score != null) parts.push('score ' + health.score);
+            if (health.last_error) parts.push('last_error');
+            return parts.length ? parts.join(' / ') : '-';
+        }
+
+        function findError(events, snapshot) {
+            const reversed = events.slice().reverse();
+            for (const ev of reversed) {
+                const payload = ev.payload || {};
+                if (ev.type === 'error') return payload.message || JSON.stringify(payload, null, 2);
+                if (ev.type === 'run_finished' && payload.success === false) {
+                    return payload.summary || payload.finish_reason || 'run finished with failure';
+                }
+            }
+            if (snapshot && snapshot.health && snapshot.health.last_error) return String(snapshot.health.last_error);
+            return '에러가 없습니다.';
+        }
+
+        function renderStepTrace(events) {
+            const items = [];
+            for (const ev of events) {
+                const payload = ev.payload || {};
+                if (ev.type === 'todo_started' || ev.type === 'todo_done' || ev.type === 'plan_created') {
+                    const label = payload.title || payload.todo_id || payload.step || ev.type;
+                    const tone = ev.type === 'todo_done' ? 'text-emerald-300' : 'text-slate-300';
+                    items.push(
+                        '<div class="rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3">' +
+                        '<div class="text-xs text-slate-500 mb-1">' + escapeHtml(formatTs(ev.ts)) + '</div>' +
+                        '<div class="text-sm ' + tone + '">' + escapeHtml(ev.type + ' · ' + label) + '</div>' +
+                        '</div>'
+                    );
+                }
+            }
+            document.getElementById('stepTraceTitle').textContent = 'Step Trace (' + items.length + ')';
+            document.getElementById('stepTrace').innerHTML = items.length
+                ? items.join('')
+                : '<div class="text-sm text-slate-500">step trace가 없습니다.</div>';
+        }
+
+        function renderToolUsage(events) {
+            const items = [];
+            for (const ev of events) {
+                const payload = ev.payload || {};
+                if (ev.type === 'tool_started' || ev.type === 'tool_done' || ev.type === 'operator_action') {
+                    const label = payload.tool || payload.action || payload.name || ev.type;
+                    const detail = payload.args ? JSON.stringify(payload.args) : (payload.result_summary || payload.message || '');
+                    items.push(
+                        '<div class="rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3">' +
+                        '<div class="text-xs text-slate-500 mb-1">' + escapeHtml(formatTs(ev.ts)) + '</div>' +
+                        '<div class="text-sm text-slate-200">' + escapeHtml(ev.type + ' · ' + label) + '</div>' +
+                        '<div class="text-xs text-slate-500 mt-2 break-words">' + escapeHtml(detail || '-') + '</div>' +
+                        '</div>'
+                    );
+                }
+            }
+            document.getElementById('toolUsageTitle').textContent = 'Tool Usage (' + items.length + ')';
+            document.getElementById('toolUsage').innerHTML = items.length
+                ? items.join('')
+                : '<div class="text-sm text-slate-500">tool usage가 없습니다.</div>';
+        }
+
+        function renderPromptResponse(events) {
+            const items = [];
+            for (const ev of events) {
+                const payload = ev.payload || {};
+                const textParts = [];
+                if (payload.prompt) textParts.push('<div><div class="text-xs uppercase tracking-[0.15em] text-slate-500 mb-2">Prompt</div><pre class="rounded-xl border border-white/10 bg-slate-950/40 p-3 text-xs leading-6 overflow-x-auto whitespace-pre-wrap break-words">' + escapeHtml(payload.prompt) + '</pre></div>');
+                if (payload.response) textParts.push('<div><div class="text-xs uppercase tracking-[0.15em] text-slate-500 mb-2">Response</div><pre class="rounded-xl border border-white/10 bg-slate-950/40 p-3 text-xs leading-6 overflow-x-auto whitespace-pre-wrap break-words">' + escapeHtml(payload.response) + '</pre></div>');
+                if (payload.messages) textParts.push('<div><div class="text-xs uppercase tracking-[0.15em] text-slate-500 mb-2">Messages</div><pre class="rounded-xl border border-white/10 bg-slate-950/40 p-3 text-xs leading-6 overflow-x-auto whitespace-pre-wrap break-words">' + escapeHtml(JSON.stringify(payload.messages, null, 2)) + '</pre></div>');
+                if (payload.tool_call) textParts.push('<div><div class="text-xs uppercase tracking-[0.15em] text-slate-500 mb-2">Tool Call</div><pre class="rounded-xl border border-white/10 bg-slate-950/40 p-3 text-xs leading-6 overflow-x-auto whitespace-pre-wrap break-words">' + escapeHtml(JSON.stringify(payload.tool_call, null, 2)) + '</pre></div>');
+                if (textParts.length) {
+                    items.push(
+                        '<article class="rounded-2xl border border-white/8 bg-slate-950/30 p-4">' +
+                        '<div class="text-xs text-slate-500 mb-3">' + escapeHtml(ev.type + ' · ' + formatTs(ev.ts)) + '</div>' +
+                        textParts.join('<div class="h-4"></div>') +
+                        '</article>'
+                    );
+                }
+            }
+            const promptBtn = document.querySelector('.tab-btn[data-tab="prompts"]');
+            if (promptBtn) promptBtn.textContent = 'Prompt / Response (' + items.length + ')';
+            document.getElementById('promptResponseList').innerHTML = items.length
+                ? items.join('')
+                : '<div class="text-sm text-slate-500">prompt/response 이벤트가 없습니다.</div>';
+        }
+
+        function renderHeader(snapshot) {
+            document.getElementById('runIdLabel').textContent = snapshot.run_id || '-';
+            document.getElementById('runMeta').textContent = (snapshot.created_at ? new Date(snapshot.created_at).toLocaleString() : '-') + ' · ' + (snapshot.status || '-') + ' · ' + (snapshot.summary || '').slice(0, 120);
+            document.getElementById('moduleLabel').textContent = snapshot.module_id || 'engine';
+            document.getElementById('runKindLabel').textContent = snapshot.run_kind || 'generic';
+            document.getElementById('modeLabel').textContent = (snapshot.decision && (snapshot.decision.selected_mode || snapshot.decision.initial_mode)) || '-';
+            document.getElementById('healthLabel').textContent = summarizeHealth(snapshot.health);
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'px-3 py-1 rounded-full text-xs border ' + statusTone(snapshot.status);
+            badge.textContent = snapshot.status || 'idle';
+        }
+
+        function renderAll() {
+            const snapshot = state.snapshot;
+            const events = state.events || [];
+            if (!snapshot) return;
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('consoleView').classList.remove('hidden');
+            document.getElementById('eventCountLabel').textContent = String(events.length);
+            document.getElementById('toolCountLabel').textContent = String(events.filter(function (ev) { return ev.type === 'tool_started' || ev.type === 'tool_done' || ev.type === 'operator_action'; }).length);
+            document.getElementById('promptCountLabel').textContent = String(events.filter(function (ev) {
+                const payload = ev.payload || {};
+                return Boolean(payload.prompt || payload.response || payload.messages || payload.tool_call);
+            }).length);
+            renderHeader(snapshot);
+            document.getElementById('errorBox').textContent = findError(events, snapshot);
+            renderStepTrace(events);
+            renderToolUsage(events);
+            renderPromptResponse(events);
+            document.getElementById('rawEvents').textContent = JSON.stringify(events, null, 2);
+            document.getElementById('rawSnapshot').textContent = JSON.stringify(state.raw || snapshot, null, 2);
+            document.getElementById('linkOperator').href = '/operator-console?run_id=' + encodeURIComponent(snapshot.run_id);
+        }
+
+        async function loadRecentRuns() {
+            const res = await fetch(API + '/api/dev/runs?limit=25', { headers: authHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            const sel = document.getElementById('recentRuns');
+            sel.innerHTML = '<option value="">최근 run 선택</option>';
+            (data.runs || []).forEach(function (run) {
+                const opt = document.createElement('option');
+                opt.value = run.run_id;
+                opt.textContent = run.run_id + ' [' + (run.module_id || 'engine') + ' · ' + (run.status || '-') + ']';
+                sel.appendChild(opt);
+            });
+        }
+
+        async function openRun(runId) {
+            const headers = authHeaders();
+            const [snapshotRes, rawRes, eventsRes] = await Promise.all([
+                fetch(API + '/api/dev/runs/' + encodeURIComponent(runId), { headers: headers }),
+                fetch(API + '/api/dev/runs/' + encodeURIComponent(runId) + '/raw', { headers: headers }),
+                fetch(API + '/api/dev/runs/' + encodeURIComponent(runId) + '/events', { headers: headers })
+            ]);
+            if (!snapshotRes.ok) throw new Error('run snapshot load failed');
+            state.runId = runId;
+            state.snapshot = await snapshotRes.json();
+            state.raw = rawRes.ok ? await rawRes.json() : null;
+            state.events = eventsRes.ok ? ((await eventsRes.json()).events || []) : (state.snapshot.events || []);
+            renderAll();
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(function (item) {
+                    item.classList.remove('bg-white/5');
+                });
+                document.querySelectorAll('.tab-panel').forEach(function (panel) {
+                    panel.classList.add('hidden');
+                });
+                button.classList.add('bg-white/5');
+                document.getElementById('tab' + button.dataset.tab.charAt(0).toUpperCase() + button.dataset.tab.slice(1)).classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('btnOpen').addEventListener('click', function () {
+            const runId = (document.getElementById('runIdInput').value || '').trim();
+            if (!runId) return;
+            openRun(runId).catch(console.warn);
+        });
+
+        document.getElementById('recentRuns').addEventListener('change', function () {
+            if (!this.value) return;
+            document.getElementById('runIdInput').value = this.value;
+            openRun(this.value).catch(console.warn);
+        });
+
+        loadRecentRuns().catch(console.warn);
+        const qsRunId = new URLSearchParams(window.location.search).get('run_id');
+        if (qsRunId) {
+            document.getElementById('runIdInput').value = qsRunId;
+            openRun(qsRunId).catch(console.warn);
+        }
+    </script>
+</body>
+</html>

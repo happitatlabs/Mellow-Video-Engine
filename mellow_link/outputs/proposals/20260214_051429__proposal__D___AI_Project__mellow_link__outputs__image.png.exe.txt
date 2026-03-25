@@ -1,0 +1,8 @@
+[Mellow-Link Security Proposal]
+- security_level: HARD
+- target_path: D:\AI_Project\mellow_link\outputs\image.png.exe
+- reason: HARD: 허용되지 않은 확장자(.exe)
+
+---- suggested_content_begin ----
+test
+---- suggested_content_end ----

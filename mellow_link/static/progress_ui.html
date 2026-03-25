@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Progress UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #fff;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #4a9eff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3a8eef;
+        }
+        
+        .btn-secondary {
+            background: #555;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #666;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #333;
+            color: #e0e0e0;
+            font-size: 14px;
+            width: 300px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .panel h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #fff;
+            border-bottom: 2px solid #4a9eff;
+            padding-bottom: 8px;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #333;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .status {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status.pending {
+            background: #666;
+            color: #fff;
+        }
+        
+        .status.running {
+            background: #4a9eff;
+            color: #fff;
+            animation: pulse 2s infinite;
+        }
+        
+        .status.completed {
+            background: #27ae60;
+            color: #fff;
+        }
+        
+        .status.failed {
+            background: #e74c3c;
+            color: #fff;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .counters {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+        }
+        
+        .counter {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .counter-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+        
+        .counter-label {
+            color: #999;
+            margin-top: 4px;
+        }
+        
+        .todos {
+            list-style: none;
+        }
+        
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #333;
+            border-radius: 6px;
+            border-left: 4px solid #555;
+            transition: all 0.2s;
+        }
+        
+        .todo-item.active {
+            border-left-color: #4a9eff;
+            background: #3a3a3a;
+        }
+        
+        .todo-item.completed {
+            border-left-color: #27ae60;
+            opacity: 0.7;
+        }
+        
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+        
+        .todo-content {
+            flex: 1;
+        }
+        
+        .todo-title {
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .todo-detail {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .logs {
+            height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-left: 3px solid #555;
+            background: #333;
+            border-radius: 4px;
+        }
+        
+        .log-entry.info {
+            border-left-color: #4a9eff;
+        }
+        
+        .log-entry.success {
+            border-left-color: #27ae60;
+        }
+        
+        .log-entry.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #f39c12;
+        }
+        
+        .log-timestamp {
+            color: #666;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        .log-message {
+            color: #e0e0e0;
+        }
+        
+        .run-id-display {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+        
+        .run-id-display code {
+            background: #333;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #4a9eff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent Progress UI</h1>
+            <div class="controls">
+                <input type="text" id="userInput" placeholder="사용자 요청 입력..." />
+                <button class="btn-primary" onclick="startRun()">시작</button>
+                <button class="btn-secondary" onclick="reconnect()">재연결</button>
+                <button class="btn-danger" onclick="clearLogs()">로그 지우기</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="panel">
+                <h2>📋 작업 목록</h2>
+                <div class="status-bar">
+                    <span class="status" id="status">대기 중</span>
+                    <div class="counters">
+                        <div class="counter">
+                            <div class="counter-value" id="toolCalls">0</div>
+                            <div class="counter-label">도구 호출</div>
+                        </div>
+                        <div class="counter">
+                            <div class="counter-value" id="filesExplored">0</div>
+                            <div class="counter-label">파일 탐색</div>
+                        </div>
+                        <div class="counter">
+                            <div class="counter-value" id="searches">0</div>
+                            <div class="counter-label">검색</div>
+                        </div>
+                    </div>
+                </div>
+                <ul class="todos" id="todos">
+                    <li class="empty-state">작업 목록이 없습니다</li>
+                </ul>
+                <div class="run-id-display">
+                    Run ID: <code id="runId">-</code>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2>📝 실시간 로그</h2>
+                <div class="logs" id="logs">
+                    <div class="empty-state">로그가 없습니다</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentRunId = null;
+        let eventSource = null;
+        let lastEventId = null;
+        let reconnectAttempts = 0;
+        let reconnectTimeout = null;
+        
+        // 상태 관리
+        const state = {
+            todos: [],
+            currentTodoId: null,
+            counters: {
+                tool_calls: 0,
+                files_explored: 0,
+                searches: 0,
+            },
+            status: 'pending',
+        };
+        
+        // UI 업데이트 함수들
+        function updateStatus(status) {
+            state.status = status;
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = {
+                'pending': '대기 중',
+                'running': '실행 중',
+                'completed': '완료',
+                'failed': '실패',
+            }[status] || status;
+            statusEl.className = `status ${status}`;
+        }
+        
+        function updateCounters(counters) {
+            Object.assign(state.counters, counters);
+            document.getElementById('toolCalls').textContent = state.counters.tool_calls || 0;
+            document.getElementById('filesExplored').textContent = state.counters.files_explored || 0;
+            document.getElementById('searches').textContent = state.counters.searches || 0;
+        }
+        
+        function updateTodos(todos, currentTodoId) {
+            state.todos = todos;
+            state.currentTodoId = currentTodoId;
+            
+            const todosEl = document.getElementById('todos');
+            if (!todos || todos.length === 0) {
+                todosEl.innerHTML = '<li class="empty-state">작업 목록이 없습니다</li>';
+                return;
+            }
+            
+            todosEl.innerHTML = todos.map(todo => {
+                const isActive = todo.todo_id === currentTodoId;
+                const isCompleted = todo.status === 'completed';
+                const classes = ['todo-item'];
+                if (isActive) classes.push('active');
+                if (isCompleted) classes.push('completed');
+                
+                return `
+                    <li class="${classes.join(' ')}">
+                        <input type="checkbox" class="todo-checkbox" ${isCompleted ? 'checked' : ''} disabled />
+                        <div class="todo-content">
+                            <div class="todo-title">${escapeHtml(todo.title)}</div>
+                            ${todo.detail ? `<div class="todo-detail">${escapeHtml(todo.detail)}</div>` : ''}
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+        
+        function addLog(level, message, timestamp) {
+            const logsEl = document.getElementById('logs');
+            if (logsEl.querySelector('.empty-state')) {
+                logsEl.innerHTML = '';
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${level}`;
+            const ts = timestamp ? new Date(timestamp * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
+            entry.innerHTML = `
+                <span class="log-timestamp">${ts}</span>
+                <span class="log-message">${escapeHtml(message)}</span>
+            `;
+            logsEl.appendChild(entry);
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // API 호출 함수들
+        async function createRun() {
+            const response = await fetch('/runs', {
+                method: 'POST',
+            });
+            const data = await response.json();
+            return data.run_id;
+        }
+        
+        async function startRun() {
+            const userInput = document.getElementById('userInput').value.trim();
+            if (!userInput) {
+                alert('사용자 요청을 입력하세요.');
+                return;
+            }
+            
+            try {
+                // Run 생성
+                const runId = await createRun();
+                currentRunId = runId;
+                document.getElementById('runId').textContent = runId;
+                
+                // Run 시작
+                const response = await fetch(`/runs/${runId}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_input: userInput,
+                        mode: 'fast',
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to start run: ${response.statusText}`);
+                }
+                
+                // 스냅샷 로드
+                await loadSnapshot(runId);
+                
+                // SSE 연결
+                connectSSE(runId);
+                
+                addLog('info', `실행 시작: ${userInput}`, null);
+            } catch (error) {
+                addLog('error', `오류: ${error.message}`, null);
+            }
+        }
+        
+        async function loadSnapshot(runId) {
+            try {
+                const response = await fetch(`/runs/${runId}`);
+                const snapshot = await response.json();
+                
+                updateStatus(snapshot.status);
+                updateTodos(snapshot.todos || [], snapshot.current_todo_id);
+                updateCounters(snapshot.counters || {});
+                
+                if (snapshot.last_event_id) {
+                    lastEventId = snapshot.last_event_id;
+                }
+            } catch (error) {
+                addLog('error', `스냅샷 로드 실패: ${error.message}`, null);
+            }
+        }
+        
+        function connectSSE(runId) {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // 재연결 타임아웃 클리어
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            
+            const url = `/runs/${runId}/events${lastEventId ? `?last_event_id=${lastEventId}` : ''}`;
+            eventSource = new EventSource(url);
+            
+            eventSource.onopen = () => {
+                // 연결 성공 시 재연결 시도 횟수 리셋
+                reconnectAttempts = 0;
+                addLog('info', 'SSE 연결 성공', null);
+            };
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleEvent(data);
+                } catch (error) {
+                    console.error('Failed to parse event:', error);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('SSE error:', error);
+                
+                // 자동 재연결 (exponential backoff)
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // 최대 30초
+                    addLog('warning', `SSE 연결 끊김 - ${delay/1000}초 후 재연결 시도 (${reconnectAttempts}회)`, null);
+                    
+                    if (reconnectTimeout) {
+                        clearTimeout(reconnectTimeout);
+                    }
+                    
+                    reconnectTimeout = setTimeout(() => {
+                        if (currentRunId) {
+                            reconnectAttempts = 0; // 성공 시 리셋
+                            connectSSE(currentRunId);
+                        }
+                    }, delay);
+                }
+            };
+        }
+        
+        function handleEvent(event) {
+            lastEventId = event.id;
+            
+            switch (event.type) {
+                case 'run_started':
+                    updateStatus('running');
+                    addLog('info', `실행 시작: ${event.payload.user_input || ''}`, event.ts);
+                    break;
+                    
+                case 'plan_created':
+                    updateTodos(event.payload.todos || [], null);
+                    addLog('info', `계획 생성됨: ${event.payload.todos?.length || 0}개 작업`, event.ts);
+                    break;
+                    
+                case 'todo_started':
+                    updateTodos(state.todos, event.payload.todo_id);
+                    addLog('info', `작업 시작: ${event.payload.title || event.payload.todo_id}`, event.ts);
+                    break;
+                    
+                case 'todo_done':
+                    const todo = state.todos.find(t => t && t.todo_id === event.payload.todo_id);
+                    if (todo) {
+                        todo.status = event.payload.status || 'completed';
+                        updateTodos(state.todos, state.currentTodoId);
+                        addLog('success', `작업 완료: ${event.payload.title || event.payload.todo_id}`, event.ts);
+                    } else {
+                        addLog('info', `작업 완료: ${event.payload.title || event.payload.todo_id}`, event.ts);
+                    }
+                    break;
+                    
+                case 'tool_started':
+                    addLog('info', `도구 실행: ${event.payload.tool_name}`, event.ts);
+                    break;
+                    
+                case 'tool_done':
+                    const success = event.payload.success;
+                    const duration = event.payload.duration_ms?.toFixed(0) || 0;
+                    addLog(
+                        success ? 'success' : 'error',
+                        `도구 완료: ${event.payload.tool_name} (${duration}ms)`,
+                        event.ts
+                    );
+                    
+                    // 카운터 업데이트
+                    const newCounters = { ...state.counters };
+                    newCounters.tool_calls = (newCounters.tool_calls || 0) + 1;
+                    
+                    const toolName = event.payload.tool_name || '';
+                    if (['list_directory', 'read_file', 'search_files'].includes(toolName)) {
+                        newCounters.files_explored = (newCounters.files_explored || 0) + 1;
+                    }
+                    if (['rag_search', 'web_search'].includes(toolName)) {
+                        newCounters.searches = (newCounters.searches || 0) + 1;
+                    }
+                    updateCounters(newCounters);
+                    break;
+                    
+                case 'log':
+                    addLog(event.payload.level || 'info', event.payload.message || '', event.ts);
+                    break;
+                    
+                case 'run_finished':
+                    updateStatus(event.payload.success ? 'completed' : 'failed');
+                    addLog(
+                        event.payload.success ? 'success' : 'error',
+                        `실행 완료: ${event.payload.summary || ''}`,
+                        event.ts
+                    );
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                    break;
+                    
+                case 'error':
+                    addLog('error', `오류: ${event.payload.message || ''}`, event.ts);
+                    break;
+            }
+        }
+        
+        function reconnect() {
+            if (currentRunId) {
+                connectSSE(currentRunId);
+                addLog('info', '재연결 시도 중...', null);
+            } else {
+                alert('실행 중인 작업이 없습니다.');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '<div class="empty-state">로그가 없습니다</div>';
+        }
+        
+        // Enter 키로 시작
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startRun();
+            }
+        });
+    </script>
+</body>
+</html>

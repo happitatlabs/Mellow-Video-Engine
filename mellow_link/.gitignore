@@ -1,0 +1,36 @@
+# .gitignore
+
+# 1. 환경변수 및 비밀키 (가장 중요!)
+.env
+.env.local
+config.py
+secrets.json
+
+# 2. 파이썬 캐시 및 빌드 파일 (쓰레기 파일)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# 3. 로컬 로그 및 데이터베이스
+*.log
+*.sqlite3
+/logs
+/data
+/keys
+
+# 4. OS 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 5. IDE 설정 (Cursor/VSCode 개인 설정)
+.vscode/
+.idea/
+
+# 6. 자율 에이전트 임시 스크립트
+workspace/.temp/
+
+# 7. 보고서 도구: 민감 원문 저장 (vault)
+vault/

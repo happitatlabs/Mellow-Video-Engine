@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventurine v3 Legacy UI</title>
+    <!-- deprecated legacy UI / 신규 사용자 진입 금지 / 호환·과거 링크 보호용 / 제거 후보 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { bg: '#0f0f23', card: '#1a1a2e', hover: '#16213e', border: '#2d3748' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; }
+        .chat-scroll { display: flex; flex-direction: column; overflow-y: auto; }
+        .sidebar-collapsed { width: 0; min-width: 0; opacity: 0; }
+        .sidebar-expanded { width: 320px; min-width: 320px; opacity: 1; }
+        .message-user { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .message-assistant { background: #1a1a2e; border: 1px solid #2d3748; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .accordion-content.open { max-height: 400px; }
+        
+        /* 이모지 피커 스타일 */
+        .emoji-picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+        .emoji-btn { font-size: 24px; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; border: 2px solid transparent; }
+        .emoji-btn:hover { background: #2d3748; transform: scale(1.1); }
+        .emoji-btn.selected { border-color: #667eea; background: #16213e; }
+
+  .edit-warning-text {
+    color: #d9534f;
+    font-weight: 600;
+    background-color: #fff3cd;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 10px 0;
+  }
+
+  .edit-warning-cancel {
+    color: #337ab7;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0 0.5em;
+    font-size: 0.95em;
+    transition: color 0.3s ease;
+    background: none;
+    border: none;
+  }
+
+  .edit-warning-cancel:hover {
+    color: #23527c;
+  }
+
+  #editWarningBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ===== In-chat TaskBlock (User View) ===== */
+  .task-block-container {
+    overflow: hidden;
+  }
+  .task-block-container .task-block-progress {
+    min-width: 0;
+  }
+
+  /* ===== Image Generation Styles ===== */
+  .generated-image-container {
+    max-width: 512px;
+  }
+
+  .generated-image-container img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Image loading animation */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .image-loading-shimmer {
+    background: linear-gradient(90deg, #1a1a2e 25%, #2d3748 50%, #1a1a2e 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ===== Intent Badges ===== */
+  .intent-badge {
+    display: inline-block;
+  }
+
+  /* ===== VRAM Widget Animation ===== */
+  @keyframes vramPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .vram-warning {
+    animation: vramPulse 1s infinite;
+  }
+
+  /* ===== Prompt Details Accordion ===== */
+  details.prompt-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details.prompt-details summary::after {
+    content: '+';
+    margin-left: auto;
+    font-weight: bold;
+  }
+
+  details.prompt-details[open] summary::after {
+    content: '-';
+  }
+
+  /* ===== 자율 작업 보고서 모달 - 모바일 레이아웃 ===== */
+  #autonomousReportModal .autonomous-report-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    word-break: break-word;
+  }
+  #autonomousReportModal .autonomous-report-card table,
+  #autonomousReportModal .autonomous-report-card pre {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .autonomous-approve-btn,
+  .autonomous-reject-btn {
+    min-height: 44px;
+    min-width: 80px;
+    padding: 10px 16px;
+    font-size: 0.875rem;
+    touch-action: manipulation;
+  }
+  /* ===== Flow Brief (사이드바 슬림 카드) ===== */
+  .flow-brief-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid #2d3748;
+    background: #1a1a2e;
+    font-size: 10px;
+    min-height: 0;
+  }
+  .flow-brief-card.flow-critical { background: rgba(220, 38, 38, 0.15); }
+  .flow-brief-card .flow-brief-icon { flex-shrink: 0; }
+  .flow-brief-card .flow-brief-body { flex: 1; min-width: 0; }
+  .flow-brief-card .flow-brief-title { color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .flow-brief-card .flow-brief-time { color: #6b7280; font-size: 9px; }
+  .flow-brief-detail-btn { flex-shrink: 0; padding: 2px 6px; font-size: 9px; background: #3b82f6; color: white; border: none; border-radius: 3px; cursor: pointer; }
+  .flow-brief-detail-btn:hover { background: #2563eb; }
+
+  @media (max-width: 640px) {
+    #autonomousReportModal .bg-dark-card {
+      margin: 0.5rem;
+      padding: 1rem;
+      max-height: calc(100vh - 1rem);
+    }
+    #autonomousReportModal h2 { font-size: 1.125rem; }
+    #autonomousReportModal #autonomousReportContent { font-size: 0.8125rem; }
+    .autonomous-approve-btn,
+    .autonomous-reject-btn {
+      min-height: 48px;
+      min-width: 100px;
+      padding: 12px 18px;
+      font-size: 0.9375rem;
+    }
+  }
+    </style>
+</head>
+
+<body class="bg-dark-bg text-gray-100 h-screen overflow-hidden">
+
+    <div class="h-screen flex flex-col">
+        <header class="bg-dark-card border-b border-dark-border px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="/runtime-console" class="px-3 py-2 bg-sky-500/15 border border-sky-400/30 rounded-lg text-sm text-sky-200 hover:bg-sky-500/25 transition">Go To Runtime Chat</a>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">💎 Aventurine v3</h1>
+                <span class="px-2 py-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-[10px] uppercase tracking-[0.2em] text-amber-300">Deprecated</span>
+                <span class="text-xs text-gray-500 px-2 py-1 bg-dark-hover rounded" id="guestBadge" style="display:none;">Guest Mode</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- VRAM Monitoring Widget -->
+                <div id="vramWidget" class="hidden md:flex px-3 py-2 bg-dark-hover rounded-lg text-sm" title="GPU VRAM Usage">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-microchip text-purple-400"></i>
+                        <div class="flex flex-col">
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs text-gray-400">VRAM</span>
+                                <span class="text-xs text-purple-400 font-mono">--/--GB</span>
+                            </div>
+                            <div class="w-20 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                                <div class="bg-purple-500 h-full transition-all duration-300 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="showReportModal()" class="px-3 py-2 bg-dark-hover hover:bg-dark-border rounded-lg transition text-sm flex items-center gap-2" title="Report Bug or Request">
+                    <i class="fas fa-bug"></i>
+                    <span class="hidden md:inline">Report</span>
+                </button>
+                <div id="authButtons" class="flex gap-3">
+                    <button onclick="showLoginModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition">Login</button>
+                    <button onclick="showRegisterModal()" class="px-4 py-2 bg-dark-hover hover:bg-dark-border rounded-lg transition">Register</button>
+                </div>
+                <div id="userInfo" style="display:none;" class="flex items-center gap-3">
+                    <span id="username" class="text-sm text-gray-300"></span>
+                    <button onclick="logout()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition text-sm">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <main class="flex-1 flex flex-col relative">
+                <div id="editWarningBar" style="display:none;"></div>
+                <!-- Progress panel: plan_created / todos (shown when run_meta or done with run_id) -->
+                <div id="progressPanel" class="hidden border-b border-dark-border bg-dark-card px-4 py-3 shadow-inner">
+                    <details id="progressDetails" class="group" open>
+                        <summary class="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-gray-200 hover:text-white py-1">
+                            <i class="fas fa-tasks text-purple-400"></i>
+                            <span id="progressSummary">할 일 목록</span>
+                        </summary>
+                        <ul id="progressTodos" class="mt-2 space-y-1.5 text-sm text-gray-400 max-h-52 overflow-y-auto pl-5 list-none"></ul>
+                        <div id="progressLog" class="mt-2 text-xs text-gray-500 max-h-28 overflow-y-auto pl-5 space-y-0.5"></div>
+                    </details>
+                </div>
+                <div id="chatMessages" class="flex-1 chat-scroll px-6 py-4 space-y-4">
+                    <div class="text-center text-gray-500 py-8">
+                        <p class="text-xl">Legacy UI (Deprecated)</p>
+                        <p class="text-sm mt-2">신규 채팅 시작은 비활성화되어 있습니다. Runtime Console 사용을 권장합니다.</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-dark-border bg-dark-card p-4">
+                    <div id="uploadPreview" class="hidden mb-2 px-2 text-xs text-purple-400 flex items-center gap-2">
+                        <i class="fas fa-spinner fa-spin" id="uploadSpinner"></i> 
+                        <i class="fas fa-check-circle hidden" id="uploadSuccessIcon"></i>
+                        <span id="uploadStatusText"></span>
+                    </div>
+
+                    <div class="flex gap-3 items-end">
+                        <input type="file" id="fileInput" class="hidden" onchange="handleFileUpload(this)">
+                        <button onclick="document.getElementById('fileInput').click()" class="p-3 bg-dark-hover hover:bg-dark-border rounded-lg text-gray-400 hover:text-white transition h-[50px] w-[50px] flex items-center justify-center" title="Upload Document"><i class="fas fa-paperclip text-lg"></i></button>
+
+                        <div class="flex-1 bg-dark-hover border border-dark-border rounded-lg flex items-center">
+                            <input type="text" id="messageInput" placeholder="Legacy UI is deprecated. Use Runtime Console." class="flex-1 bg-transparent border-none px-4 py-3 text-gray-100 focus:outline-none focus:ring-0 opacity-60 cursor-not-allowed" onkeypress="if(event.key==='Enter') handleChatAction()" disabled />
+                        </div>
+
+                        <button id="sendBtn" onclick="handleChatAction()" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition font-medium h-[50px] w-[80px] flex items-center justify-center opacity-60 cursor-not-allowed" disabled title="Legacy chat disabled"><i id="sendIcon" class="fas fa-paper-plane"></i></button>
+                    </div>
+
+                    <div class="flex justify-between items-center mt-2 text-xs text-gray-500 px-1">
+                        <div class="flex gap-3 items-center">
+                            <button id="modeToggle" onclick="toggleMode()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all border" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #059669; color: white;">
+                                <i id="modeIcon" class="fas fa-robot"></i>
+                                <span id="modeText" class="font-medium">Auto</span>
+                            </button>
+                            <span id="statusText">Ready</span>
+                            <span id="sessionInfo"></span>
+                            <span id="ragStatus" class="text-purple-400 hidden"><i class="fas fa-database"></i> RAG Active</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span>Temp:</span>
+                            <input type="range" min="0" max="100" value="70" class="w-20" id="tempSlider">
+                            <span id="tempValue">0.7</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <aside id="sidebar" class="sidebar-expanded bg-dark-card border-l border-dark-border transition-all duration-300 flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-dark-border flex items-center justify-between">
+                    <h2 class="font-semibold text-gray-200">Chat History</h2>
+                    <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-200 text-xl"><span id="toggleIcon">›</span></button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <button onclick="newChat()" class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition font-medium">+ New Chat</button>
+
+                    <!-- Mellow-Link Section (Admin Only) -->
+                    <div id="mellowLinkSection" class="border border-yellow-600/30 rounded-lg overflow-hidden" style="display:none;" data-admin-only="true">
+                        <button onclick="toggleMellowLink()" class="w-full flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 hover:from-yellow-900/40 hover:to-orange-900/40 transition">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">🔗</span>
+                                <span class="text-sm font-semibold text-yellow-400">Mellow-Link</span>
+                                <span id="avatarStatusDot" class="w-2 h-2 rounded-full bg-gray-500" title="Avatar disconnected"></span>
+                            </div>
+                            <span id="mellowLinkIcon" class="text-yellow-400 transition-transform duration-200">▼</span>
+                        </button>
+                        <div id="mellowLinkContent" class="px-3 py-2 space-y-2 bg-dark-bg/50">
+                            <!-- Avatar Status -->
+                            <div id="avatarStatusPanel" class="text-xs text-gray-400 flex items-center justify-between">
+                                <span><i class="fas fa-robot mr-1"></i>Avatar</span>
+                                <span id="avatarStatusText" class="text-gray-500">Checking...</span>
+                            </div>
+                            <!-- Secretary Folder (Admin only) -->
+                            <div id="secretaryFolder" class="hidden">
+                                <button onclick="selectSecretaryFolder()" class="w-full flex items-center gap-2 px-3 py-2 bg-pink-900/30 hover:bg-pink-900/50 rounded-lg transition text-left">
+                                    <span class="text-lg">🎀</span>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-pink-300">Secretary</div>
+                                        <div class="text-xs text-gray-500">VTuber companion</div>
+                                    </div>
+                                </button>
+                            </div>
+                            <!-- Evolution Cycle (자가발전) -->
+                            <div class="pt-1">
+                                <button onclick="launchEvolutionCycle()" id="evolutionCycleBtn" class="w-full px-2 py-2 bg-amber-900/30 hover:bg-amber-900/50 rounded text-xs text-amber-400 transition flex items-center justify-center gap-2" title="삼권분립 자가발전 요청">
+                                    <i class="fas fa-landmark"></i> 자가발전 요청
+                                </button>
+                            </div>
+                            <!-- 자율 작업 보고서 -->
+                            <div class="pt-1">
+                                <button onclick="showAutonomousReportModal()" class="w-full px-2 py-2 bg-indigo-900/30 hover:bg-indigo-900/50 rounded text-xs text-indigo-300 transition flex items-center justify-center gap-2" title="자율 작업 요약 보고서">
+                                    <i class="fas fa-robot"></i> 자율 작업 보고서
+                                </button>
+                            </div>
+                            <!-- 틱 즉시 실행 (테스트용) -->
+                            <div class="pt-1">
+                                <button onclick="runAutonomousTickNow()" class="w-full px-2 py-2 bg-emerald-900/30 hover:bg-emerald-900/50 rounded text-xs text-emerald-300 transition flex items-center justify-center gap-2" title="자율 틱 1회 즉시 실행">
+                                    <i class="fas fa-play-circle"></i> 틱 즉시 실행
+                                </button>
+                            </div>
+                            <!-- 시스템 플로우 관전 (요약만 사이드바, 상세는 별도 창) -->
+                            <div class="pt-1">
+                                <button id="btn-monitor-flow" class="w-full px-2 py-2 bg-cyan-900/30 hover:bg-cyan-900/50 rounded text-xs text-cyan-300 transition flex items-center justify-center gap-2" title="Experience Ledger, Evolution Logs, Behavior Insights 요약">
+                                    <i class="fas fa-stream"></i> 🔍 시스템 플로우 관전
+                                </button>
+                            </div>
+                            <div id="flow-display-area" class="flow-brief-area mt-2 rounded border border-[#2d3748] overflow-hidden" style="display: none;">
+                                <div class="flow-brief-title px-2 py-1.5 text-[10px] font-semibold text-cyan-300 bg-[#1a1a2e]">최근 30분 요약</div>
+                                <div id="flow-list" class="flow-list max-h-48 overflow-y-auto p-1.5 space-y-1 bg-[#0f0f23]/80"></div>
+                            </div>
+                            <!-- Quick Actions -->
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="refreshAvatarStatus()" class="flex-1 px-2 py-1.5 bg-dark-hover hover:bg-dark-border rounded text-xs text-gray-400 transition" title="Refresh status">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button onclick="launchAvatar()" id="launchAvatarBtn" class="flex-1 px-2 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 rounded text-xs text-yellow-400 transition" title="Launch avatar">
+                                    <i class="fas fa-play"></i> Launch
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="foldersSection" style="display:none;">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-sm font-semibold text-gray-400">Folders</h3>
+                            <button onclick="showCreateFolderModal()" class="text-purple-400 hover:text-purple-300 text-xl" title="Create Folder">+</button>
+                        </div>
+                        <div id="foldersList" class="space-y-2"></div>
+                    </div>
+                    <div id="uncategorizedSection" style="display:none;">
+                        <button onclick="toggleUncategorized()" class="w-full flex items-center justify-between px-3 py-2 bg-dark-hover hover:bg-dark-border rounded-lg transition">
+                            <span class="text-sm font-semibold text-gray-400">📂 Uncategorized</span>
+                            <span id="uncategorizedIcon">▼</span>
+                        </button>
+                        <div id="uncategorizedList" class="mt-2 space-y-1 pl-2" style="display:none;"></div>
+                    </div>
+                </div>
+            </aside>
+            <button id="sidebarToggleBtn" onclick="toggleSidebar()" class="fixed right-4 top-20 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg shadow-lg transition z-50" style="display:none;">≡</button>
+        </div>
+    </div>
+
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-md w-full mx-4 border border-dark-border relative">
+            
+            <button onclick="closeModal('loginModal')" class="absolute top-4 right-4 text-gray-500 hover:text-white transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+    
+            <h2 class="text-2xl font-bold mb-2">Login</h2>
+            
+            <input type="text" id="loginUsername" placeholder="Username" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none" />
+            <input type="password" id="loginPassword" placeholder="Password" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-8 text-gray-100 focus:outline-none" onkeypress="if(event.key==='Enter') login()" />
+            
+            <div class="flex items-center gap-3 mt-6">
+                <button onclick="login()" class="flex-1 px-4 py-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition font-bold text-lg shadow-lg shadow-purple-500/20">
+                    Login
+                </button>
+                <button onclick="switchToRegister();" class="flex-1 px-4 py-4 bg-dark-hover hover:bg-dark-border border border-purple-500/30 rounded-lg transition font-bold text-lg text-purple-300">
+                    Sign Up
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-md w-full mx-4 border border-dark-border">
+            <h2 class="text-2xl font-bold mb-6">Register</h2>
+            <input type="text" id="registerUsername" placeholder="Username" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none" />
+            <input type="password" id="registerPassword" placeholder="Password" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-6 text-gray-100 focus:outline-none" onkeypress="if(event.key==='Enter') register()" />
+            <div class="flex gap-3"><button onclick="register()" class="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition">Register</button><button onclick="closeModal('registerModal')" class="px-4 py-3 bg-dark-hover hover:bg-dark-border rounded-lg transition">Cancel</button></div>
+        </div>
+    </div>
+    <div id="createFolderModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-lg w-full mx-4 border border-dark-border">
+            <h2 class="text-2xl font-bold mb-6">Create Folder</h2>
+            <div class="mb-4"><label class="block text-sm font-medium mb-2 text-gray-300">Icon</label><div class="emoji-picker-grid"><div class="emoji-btn selected" onclick="selectEmoji(this, '📁')">📁</div><div class="emoji-btn" onclick="selectEmoji(this, '💬')">💬</div><div class="emoji-btn" onclick="selectEmoji(this, '🗄️')">🗄️</div><div class="emoji-btn" onclick="selectEmoji(this, '📚')">📚</div><div class="emoji-btn" onclick="selectEmoji(this, '🔬')">🔬</div><div class="emoji-btn" onclick="selectEmoji(this, '💼')">💼</div></div><input type="hidden" id="selectedIcon" value="📁"></div>
+            <input type="text" id="folderName" placeholder="Folder name" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none" />
+            <textarea id="folderSystemPrompt" placeholder="System prompt" rows="3" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none"></textarea>
+            <label class="flex items-center gap-2 mb-3 text-sm text-gray-300"><input type="checkbox" id="folderUseRAG" class="w-4 h-4" checked><span>Enable RAG</span></label>
+            <label class="flex items-center gap-2 mb-3 text-sm text-gray-300"><input type="checkbox" id="folderIsCreative" class="w-4 h-4"><span>Creative Mode (재생성 허용)</span></label>
+            <input type="text" id="folderRAGCollection" placeholder="RAG collection name (optional)" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-6 text-gray-100 focus:outline-none" />
+            <div class="flex gap-3"><button onclick="createFolder()" class="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition">Create</button><button onclick="closeModal('createFolderModal')" class="px-4 py-3 bg-dark-hover hover:bg-dark-border rounded-lg transition">Cancel</button></div>
+        </div>
+    </div>
+    <div id="folderSettingsModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-2xl w-full mx-4 my-8 border border-dark-border max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><span id="folderSettingsIcon">📁</span><span id="folderSettingsName">Folder Settings</span></h2>
+            <div class="mb-6"><h3 class="text-lg font-semibold mb-3 text-gray-300">Basic Settings</h3><input type="text" id="editFolderName" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none" /><textarea id="editFolderPrompt" rows="4" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 mb-3 text-gray-100 focus:outline-none"></textarea><label class="flex items-center gap-2 text-sm text-gray-300"><input type="checkbox" id="editFolderIsCreative" class="w-4 h-4"><span>Creative Mode</span></label></div>
+            <div class="mb-6"><div class="flex items-center justify-between mb-3"><h3 class="text-lg font-semibold text-gray-300">RAG Documents</h3><label class="relative inline-flex items-center cursor-pointer"><input type="file" id="folderFileInput" class="hidden" onchange="uploadToCurrentFolder(this)"><button onclick="document.getElementById('folderFileInput').click()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"><i class="fas fa-plus mr-1"></i>Add</button></label></div><div id="folderDocumentsList" class="space-y-2 max-h-64 overflow-y-auto bg-dark-bg rounded-lg p-3"></div></div>
+            <div class="mb-6 border-t border-red-900 pt-6"><h3 class="text-lg font-semibold text-red-400 mb-3">Danger Zone</h3><button onclick="confirmDeleteFolder()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition text-sm"><i class="fas fa-trash mr-1"></i>Delete Folder</button></div>
+            <div class="flex gap-3"><button onclick="saveFolderSettings()" class="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition">Save</button><button onclick="closeModal('folderSettingsModal')" class="px-4 py-3 bg-dark-hover hover:bg-dark-border rounded-lg transition">Close</button></div>
+        </div>
+    </div>
+
+    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-lg w-full mx-4 border border-dark-border">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                <i class="fas fa-bug text-yellow-400"></i>
+                <span>Developer Report</span>
+            </h2>
+            <p class="text-sm text-gray-400 mb-4">Found a bug or have a feature request? Let us know!</p>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2 text-gray-300">Category</label>
+                <select id="reportCategory" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 text-gray-100 focus:outline-none">
+                    <option value="bug">Bug Report</option>
+                    <option value="request">Feature Request</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2 text-gray-300">Summary</label>
+                <input type="text" id="reportSummary" placeholder="Brief description..." class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 text-gray-100 focus:outline-none" maxlength="100" />
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2 text-gray-300">Details</label>
+                <textarea id="reportDetails" placeholder="Describe the issue or request in detail..." rows="5" class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 text-gray-100 focus:outline-none"></textarea>
+            </div>
+
+            <div class="bg-dark-hover rounded-lg p-3 mb-6">
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Current session and last AI response will be automatically attached.
+                </p>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="submitReport()" class="flex-1 px-4 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition">
+                    Submit Report
+                </button>
+                <button onclick="closeModal('reportModal')" class="px-4 py-3 bg-dark-hover hover:bg-dark-border rounded-lg transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 자율 작업 보고서 모달 (Admin 전용) -->
+    <div id="autonomousReportModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-2xl w-full mx-4 my-8 border border-indigo-500/30 max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <i class="fas fa-robot text-indigo-400"></i>
+                <span>자율 작업 요약 보고서</span>
+            </h2>
+            <div id="autonomousReportContent" class="space-y-4 text-sm text-gray-300">
+                <p class="text-gray-500">로딩 중...</p>
+            </div>
+            <div class="mt-6">
+                <button onclick="closeModal('autonomousReportModal')" class="px-4 py-2 bg-dark-hover hover:bg-dark-border rounded-lg transition">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest Access Modal (Non-closable until authenticated) -->
+    <div id="guestAccessModal" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100]" style="display:none;">
+        <div class="bg-dark-card rounded-xl p-8 max-w-md w-full mx-4 border border-dark-border shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-4">💎</div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">Aventurine v3</h2>
+                <p class="text-gray-400 text-sm mt-2">Enter your access code to continue</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2 text-gray-300">Access Code</label>
+                    <input
+                        type="password"
+                        id="guestAccessCode"
+                        placeholder="Enter access code..."
+                        class="w-full bg-dark-hover border border-dark-border rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:border-purple-500 transition"
+                        onkeypress="if(event.key==='Enter') submitGuestAccess()"
+                        autocomplete="off"
+                    />
+                </div>
+
+                <div id="guestAccessError" class="text-red-400 text-sm text-center hidden">
+                    <i class="fas fa-exclamation-circle mr-1"></i>
+                    <span id="guestAccessErrorText">Invalid access code</span>
+                </div>
+
+                <button
+                    id="guestAccessBtn"
+                    onclick="submitGuestAccess()"
+                    class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition font-medium flex items-center justify-center gap-2"
+                >
+                    <i id="guestAccessBtnIcon" class="fas fa-key"></i>
+                    <span id="guestAccessBtnText">Access</span>
+                </button>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-dark-border">
+                <p class="text-xs text-gray-500 text-center">
+                    Already have an account?
+                    <button onclick="showLoginFromGuestModal()" class="text-purple-400 hover:text-purple-300 underline">Login here</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ JS (Single Source of Truth: /static/js) -->
+    <script defer src="/static/js/state.js"></script><!-- 상태/전역 -->
+    <script defer src="/static/js/api.js"></script><!-- fetch 래퍼 -->
+    <script defer src="/static/js/utils.js"></script><!-- 유틸리티 -->
+    <script defer src="/static/js/ui-render.js"></script><!-- UI 렌더링 -->
+    <script defer src="/static/js/auth.js"></script><!-- 인증 -->
+    <script defer src="/static/js/folders.js"></script><!-- 폴더 -->
+    <script defer src="/static/js/chat.js"></script><!-- 레거시 호환 셸: 신규 채팅 비활성화 -->
+    <script defer src="/static/js/app.js"></script><!-- 앱 -->
+</body>
+</html>
+
+
