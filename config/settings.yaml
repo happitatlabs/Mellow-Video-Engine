@@ -117,6 +117,12 @@ outputs:
 
 video:
   default_mode: "LOCAL_MOTION_LOOP"
+  backend: "minimax_h3"
+  minimax_h3:
+    workflow: "video_minimax_h3_i2v.json"
+    megapixels: 0.4
+    fps: 24
+    duration_seconds: 5.0
   locked_camera_mode: true
   locked_camera_backend: "ambient_loop"
   locked_camera_workflow: "svd_xt_locked_camera.json"
