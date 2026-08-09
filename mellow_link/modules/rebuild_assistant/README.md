@@ -128,6 +128,22 @@ UI에서는 기존 temp upload 흐름을 그대로 재사용합니다.
 - `scope_limited`
 - `needs_more_input`
 
+## 익명화 정책
+
+`AnonymizationLayerV0`는 구조를 바꾸지 않고 값만 치환합니다.
+
+- v0에서는 고신뢰 구조 식별자에 대해서만 pseudonymization을 적용합니다.
+- 일반 변수명 및 문맥상 모호한 식별자는 유지합니다.
+- 예: SQL의 table/column 위치, `class/interface/enum` 정의명, 함수 정의, 명시적 API path literal
+
+## 익명화 거버넌스
+
+- v0에서는 차단보다 관측과 검증을 우선합니다.
+- 사용자 표면은 `anonymization_summary` 기반 summary only로 제한합니다.
+- 개발자 표면은 summary + preview만 기본 UI에 노출합니다.
+- 최대 raw payload는 제한된 debug 표면에서만 다룹니다.
+- approval gate는 두지 않으며, 차단은 v1 이후 실제 위반/오탐 데이터를 보고 재검토합니다.
+
 ## 진행 단계
 
 내부 raw todo는 5단계입니다.

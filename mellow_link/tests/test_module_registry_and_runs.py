@@ -54,6 +54,21 @@ def _user_headers():
     return {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
 
+def _admin_headers():
+    from mellow_link.infra.database import SessionLocal
+    from mellow_link.infra import User, UserRole, create_default_folders_for_user, create_access_token
+
+    username = f"admin_{uuid.uuid4().hex[:8]}"
+    with SessionLocal() as db:
+        user = User(username=username, hashed_password="test-hash", role=UserRole.ADMIN.value)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        create_default_folders_for_user(db, user.id, role=UserRole.ADMIN.value)
+        token = create_access_token(data={"sub": username}, role=user.role)
+    return {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+
 def test_modules_api_lists_registered_modules(client):
     res = client.get("/api/modules")
     assert res.status_code == 200
@@ -173,6 +188,101 @@ def test_rebuild_assistant_requires_assets_or_temp_session(client):
         },
     )
     assert res.status_code == 422
+
+
+def test_run_events_hide_debug_anonymization_payload_from_user_api(client):
+    from mellow_link.infra.run_events import (
+        EVENT_TYPE_DEBUG_ANONYMIZATION_REPORT,
+        EVENT_TYPE_RUN_FINISHED,
+        emit_event,
+    )
+
+    user_headers = _user_headers()
+    admin_headers = _admin_headers()
+    create_res = client.post(
+        "/runs?module_id=rebuild_assistant&run_kind=rebuild_plan",
+        headers=user_headers,
+    )
+    assert create_res.status_code == 200, create_res.text
+    run_id = create_res.json()["run_id"]
+
+    emit_event(
+        run_id,
+        EVENT_TYPE_DEBUG_ANONYMIZATION_REPORT,
+        {
+            "policy_version": "anonymization-v0-conservative",
+            "validation": {
+                "passed": True,
+                "shape_preserved": True,
+                "user_surface_safe": True,
+                "findings": [],
+            },
+            "report_summary": {
+                "applied": True,
+                "total_replacements": 4,
+                "request_context_redacted": True,
+                "risk_flags": ["sql_identifiers_pseudonymized"],
+            },
+            "block_previews": [
+                {
+                    "block_id": "block:source_code",
+                    "kind": "source_code",
+                    "replacement_count": 2,
+                    "preview_text": "public class CLASS_001 { return fetch(\"API_PATH_001\"); }",
+                }
+            ],
+            "anonymization_report": {
+                "policy_version": "anonymization-v0-conservative",
+                "request_context_redacted": True,
+                "block_reports": [
+                    {
+                        "block_id": "block:source_code",
+                        "replacement_count": 2,
+                        "applied_rules": ["CLASS", "API_PATH"],
+                    }
+                ],
+                "asset_reports": [],
+                "redaction_summary": {"total_replacements": 4},
+                "structure_risk_flags": ["sql_identifiers_pseudonymized"],
+            },
+        },
+    )
+    emit_event(
+        run_id,
+        EVENT_TYPE_RUN_FINISHED,
+        {
+            "success": True,
+            "summary": "익명화 요약 포함",
+            "anonymization_summary": {
+                "applied": True,
+                "policy_version": "anonymization-v0-conservative",
+                "total_replacements": 4,
+                "request_context_redacted": True,
+                "block_counts": [{"block_id": "block:source_code", "replacement_count": 2}],
+                "risk_flags": ["sql_identifiers_pseudonymized"],
+            },
+            "module_id": "rebuild_assistant",
+            "run_kind": "rebuild_plan",
+        },
+    )
+
+    user_events_res = client.get(f"/runs/{run_id}/events?format=json", headers=user_headers)
+    assert user_events_res.status_code == 200, user_events_res.text
+    user_events = user_events_res.json()["events"]
+    assert all(event["type"] != "debug_anonymization_report" for event in user_events)
+    user_finished = [event for event in user_events if event["type"] == "run_finished"]
+    assert len(user_finished) == 1
+    assert "anonymization_summary" in user_finished[0]["payload"]
+    assert "anonymization_report" not in user_finished[0]["payload"]
+    assert "sanitized_input" not in user_finished[0]["payload"]
+
+    dev_events_res = client.get(f"/api/dev/runs/{run_id}/events", headers=admin_headers)
+    assert dev_events_res.status_code == 200, dev_events_res.text
+    dev_events = dev_events_res.json()["events"]
+    debug_events = [event for event in dev_events if event["type"] == "debug_anonymization_report"]
+    assert len(debug_events) == 1
+    assert "anonymization_report" in debug_events[0]["payload"]
+    assert "sanitized_input" not in debug_events[0]["payload"]
 
 
 def test_research_assistant_formats_user_facing_summary():
@@ -546,6 +656,369 @@ def test_rebuild_assistant_summary_mentions_scope_metadata():
     assert "confidence:" in summary
 
 
+def test_input_assembler_v0_emits_neutral_output_contract():
+    from mellow_link.modules.rebuild_assistant.input_assembler import InputAssemblerV0
+    from mellow_link.modules.rebuild_assistant.schemas import InputAssemblerV0Input
+
+    assembler = InputAssemblerV0()
+    output = assembler.assemble(
+        InputAssemblerV0Input(
+            request_context={
+                "goal": "주문 조회 JSP 기능의 현재 구조를 해석한다.",
+                "constraints": ["기존 DB 스키마는 유지", "판단 없이 구조 사실만 추출", "기존 DB 스키마는 유지"],
+            },
+            input_assets=[
+                {
+                    "asset_id": "asset-source",
+                    "origin": "typed_form",
+                    "declared_kind": "source_code",
+                    "text": "line1\r\nline2\r\n",
+                },
+                {
+                    "asset_id": "asset-ui",
+                    "origin": "temp_upload",
+                    "declared_kind": "ui_template",
+                    "text": "<form>...</form>",
+                    "filename": "order.jsp",
+                    "source_ref": "temp-1",
+                },
+                {
+                    "asset_id": "asset-unknown",
+                    "origin": "temp_upload",
+                    "declared_kind": "unknown",
+                    "text": "mystery block",
+                },
+            ],
+        )
+    )
+
+    dumped = output.model_dump()
+    assert dumped["assembler_version"] == "input-assembler-v0"
+    assert dumped["request_context"] == {
+        "goal": "주문 조회 JSP 기능의 현재 구조를 해석한다.",
+        "constraints": ["기존 DB 스키마는 유지", "판단 없이 구조 사실만 추출"],
+    }
+    assert set(dumped.keys()) == {
+        "assembler_version",
+        "request_context",
+        "asset_inventory",
+        "source_blocks",
+        "missing_context",
+        "unknowns",
+    }
+    assert [item["asset_id"] for item in dumped["asset_inventory"]] == ["asset-source", "asset-ui", "asset-unknown"]
+    assert [block["kind"] for block in dumped["source_blocks"]] == ["source_code", "ui_template", "unclassified_text"]
+    assert dumped["source_blocks"][0]["text"] == "line1\nline2"
+    assert all("주문 조회 JSP 기능의 현재 구조를 해석한다." not in block["text"] for block in dumped["source_blocks"])
+    assert all("기존 DB 스키마는 유지" not in block["text"] for block in dumped["source_blocks"])
+    assert {item["code"] for item in dumped["missing_context"]} == {"database_context_missing", "runtime_context_missing"}
+    assert {item["code"] for item in dumped["unknowns"]} == {"unknown_asset_kind", "partial_asset_metadata"}
+
+
+def test_input_assembler_v0_tracks_empty_assets_without_promoting_them():
+    from mellow_link.modules.rebuild_assistant.input_assembler import InputAssemblerV0
+    from mellow_link.modules.rebuild_assistant.schemas import InputAssemblerV0Input
+
+    assembler = InputAssemblerV0()
+    output = assembler.assemble(
+        InputAssemblerV0Input(
+            request_context={},
+            input_assets=[
+                {
+                    "asset_id": "empty-source",
+                    "origin": "typed_form",
+                    "declared_kind": "source_code",
+                    "text": "   \r\n  ",
+                }
+            ],
+        )
+    )
+
+    assert output.source_blocks == []
+    assert output.asset_inventory[0].mapped_block_ids == []
+    assert {item.code for item in output.unknowns} == {"empty_asset_text"}
+    assert {item.code for item in output.missing_context} == {
+        "goal_missing",
+        "structure_inputs_missing",
+        "database_context_missing",
+        "runtime_context_missing",
+    }
+
+
+def test_anonymization_layer_v0_preserves_shape_and_pseudonymizes_deterministically():
+    from mellow_link.modules.rebuild_assistant.anonymization_layer import AnonymizationLayerV0
+    from mellow_link.modules.rebuild_assistant.schemas import InputAssemblerV0Output
+
+    source = InputAssemblerV0Output(
+        request_context={
+            "goal": "john.doe@example.com 계정의 주문 조회 구조를 분석한다.",
+            "constraints": ["내부 서버 https://corp.example.internal 를 외부 공유용으로 정리"],
+        },
+        asset_inventory=[
+            {
+                "asset_id": "typed_form:source_code",
+                "origin": "typed_form",
+                "declared_kind": "source_code",
+                "filename": "order_controller.java",
+                "source_ref": "temp-session-123",
+                "mapped_block_ids": ["block:source_code"],
+                "char_count": 120,
+            },
+            {
+                "asset_id": "typed_form:sql_queries",
+                "origin": "typed_form",
+                "declared_kind": "sql_queries",
+                "filename": "order_query.sql",
+                "mapped_block_ids": ["block:sql_queries"],
+                "char_count": 140,
+            },
+        ],
+        source_blocks=[
+            {
+                "block_id": "block:source_code",
+                "kind": "source_code",
+                "asset_ids": ["typed_form:source_code"],
+                "text": """
+public class OrderController {
+    public OrderSummary loadOrder() {
+        return fetch("/api/orders/list");
+    }
+}
+                """.strip(),
+            },
+            {
+                "block_id": "block:sql_queries",
+                "kind": "sql_queries",
+                "asset_ids": ["typed_form:sql_queries"],
+                "text": """
+CREATE TABLE orders (id bigint, user_id varchar(50), status varchar(20));
+SELECT o.id, o.user_id, o.status FROM orders o JOIN users u ON u.id = o.user_id ORDER BY o.status DESC
+                """.strip(),
+            },
+        ],
+    )
+
+    layer = AnonymizationLayerV0()
+    first = layer.sanitize(source)
+    second = layer.sanitize(source)
+
+    assert first.model_dump() == second.model_dump()
+    assert [item.asset_id for item in first.sanitized_input.asset_inventory] == [
+        "typed_form:source_code",
+        "typed_form:sql_queries",
+    ]
+    assert [block.block_id for block in first.sanitized_input.source_blocks] == ["block:source_code", "block:sql_queries"]
+    assert first.sanitized_input.asset_inventory[0].filename == "FILE_001.java"
+    assert first.sanitized_input.asset_inventory[0].source_ref == "SRCREF_001"
+    assert "EMAIL_001" in (first.sanitized_input.request_context.goal or "")
+    assert "HOST_001" in first.sanitized_input.request_context.constraints[0]
+    assert "CLASS_001" in first.sanitized_input.source_blocks[0].text
+    assert "FUNC_001" in first.sanitized_input.source_blocks[0].text
+    assert "API_PATH_001" in first.sanitized_input.source_blocks[0].text
+    assert "TABLE_001" in first.sanitized_input.source_blocks[1].text
+    assert "COL_001" in first.sanitized_input.source_blocks[1].text
+    assert "typed_form:source_code" in first.sanitized_input.source_blocks[0].asset_ids
+    assert "sql_identifiers_pseudonymized" in first.anonymization_report.structure_risk_flags
+    assert "identifier_like_tokens_redacted" in first.anonymization_report.structure_risk_flags
+    assert first.anonymization_report.redaction_summary.total_replacements > 0
+
+
+def test_anonymization_layer_v0_keeps_ambiguous_variable_names_under_conservative_policy():
+    from mellow_link.modules.rebuild_assistant.anonymization_layer import AnonymizationLayerV0
+    from mellow_link.modules.rebuild_assistant.schemas import InputAssemblerV0Output
+
+    source = InputAssemblerV0Output(
+        source_blocks=[
+            {
+                "block_id": "block:source_code",
+                "kind": "source_code",
+                "asset_ids": ["typed_form:source_code"],
+                "text": 'String userId = request.getParameter("userId"); int count = 1;',
+            }
+        ]
+    )
+
+    output = AnonymizationLayerV0().sanitize(source)
+
+    assert output.sanitized_input.source_blocks[0].text == 'String userId = request.getParameter("userId"); int count = 1;'
+    assert output.anonymization_report.redaction_summary.total_replacements == 0
+    assert output.anonymization_report.structure_risk_flags == []
+
+
+def test_anonymization_debug_payload_uses_sanitized_block_preview_and_structured_validation():
+    from mellow_link.modules.rebuild_assistant.anonymization_exposure import (
+        build_anonymization_debug_payload,
+        build_preview_text,
+    )
+    from mellow_link.modules.rebuild_assistant.anonymization_layer import AnonymizationLayerV0
+    from mellow_link.modules.rebuild_assistant.schemas import InputAssemblerV0Output
+
+    source = InputAssemblerV0Output(
+        request_context={"goal": "john.doe@example.com 구조를 확인한다.", "constraints": []},
+        asset_inventory=[
+            {
+                "asset_id": "typed_form:source_code",
+                "origin": "typed_form",
+                "declared_kind": "source_code",
+                "mapped_block_ids": ["block:source_code"],
+                "char_count": 40,
+            }
+        ],
+        source_blocks=[
+            {
+                "block_id": "block:source_code",
+                "kind": "source_code",
+                "asset_ids": ["typed_form:source_code"],
+                "text": "public class OrderController {\r\n\tpublic void load() { return fetch(\"/api/orders/list\"); }\r\n}\r\n",
+            }
+        ],
+    )
+
+    anonymization_output = AnonymizationLayerV0().sanitize(source)
+    payload = build_anonymization_debug_payload(
+        original_input=source,
+        anonymization_output=anonymization_output,
+    )
+    preview = payload.block_previews[0]
+
+    assert preview.preview_text == build_preview_text(anonymization_output.sanitized_input.source_blocks[0].text)
+    assert "\n" not in preview.preview_text
+    assert "\t" not in preview.preview_text
+    assert len(preview.preview_text) <= 160
+    assert payload.validation.passed is True
+    assert payload.validation.findings == []
+    assert payload.anonymization_report.redaction_summary.total_replacements >= 1
+
+
+def test_anonymization_validation_reports_structured_findings_for_shape_and_visibility_violations():
+    from mellow_link.modules.rebuild_assistant.anonymization_exposure import validate_anonymization_exposure
+    from mellow_link.modules.rebuild_assistant.schemas import (
+        AnonymizationSummary,
+        AnonymizationV0Output,
+        InputAssemblerV0Output,
+    )
+
+    original = InputAssemblerV0Output(
+        asset_inventory=[
+            {
+                "asset_id": "typed_form:source_code",
+                "origin": "typed_form",
+                "declared_kind": "source_code",
+                "mapped_block_ids": ["block:source_code"],
+                "char_count": 10,
+            }
+        ],
+        source_blocks=[
+            {
+                "block_id": "block:source_code",
+                "kind": "source_code",
+                "asset_ids": ["typed_form:source_code"],
+                "text": "legacy text",
+            }
+        ],
+    )
+    mutated = InputAssemblerV0Output(
+        asset_inventory=[
+            {
+                "asset_id": "typed_form:source_code",
+                "origin": "typed_form",
+                "declared_kind": "source_code",
+                "mapped_block_ids": ["block:sql_queries"],
+                "char_count": 10,
+            }
+        ],
+        source_blocks=[
+            {
+                "block_id": "block:sql_queries",
+                "kind": "sql_queries",
+                "asset_ids": ["typed_form:source_code"],
+                "text": "sanitized text",
+            }
+        ],
+    )
+
+    validation = validate_anonymization_exposure(
+        original_input=original,
+        anonymization_output=AnonymizationV0Output(sanitized_input=mutated),
+        user_summary=AnonymizationSummary(),
+        debug_event_type="log",
+    )
+
+    assert validation.passed is False
+    assert validation.shape_preserved is False
+    assert validation.user_surface_safe is True
+    assert {finding.code for finding in validation.findings} == {
+        "shape_not_preserved",
+        "asset_links_changed",
+        "dev_event_visible_in_user_stream",
+    }
+
+
+def test_rebuild_assistant_prepare_input_exposes_assembler_output():
+    from mellow_link.modules.rebuild_assistant.schemas import RebuildAssetsPayload
+    from mellow_link.modules.rebuild_assistant.service import RebuildAssistantService
+
+    svc = RebuildAssistantService()
+    prepared = svc.prepare_input(
+        goal="이 JSP 주문 조회 화면을 React + REST API로 재구성해줘",
+        assets=RebuildAssetsPayload(
+            source_code="<% String userId = request.getParameter(\"userId\"); %>",
+            sql_queries="SELECT * FROM orders WHERE user_id = ?",
+        ),
+        constraints=["기존 DB 스키마는 유지"],
+        temp_context="--- [legacy.jsp] ---\n<form><input name=\"userId\" /></form>",
+        temp_source_ref="rebuild-temp",
+    )
+
+    assert prepared.assembler_output is not None
+    assert prepared.anonymization_output is not None
+    assert prepared.assembler_output.request_context.goal == "이 JSP 주문 조회 화면을 React + REST API로 재구성해줘"
+    assert prepared.assembler_output.request_context.constraints == ["기존 DB 스키마는 유지"]
+    assert [block.kind for block in prepared.assembler_output.source_blocks] == [
+        "source_code",
+        "sql_queries",
+        "unclassified_text",
+    ]
+    assert prepared.temp_context == "--- [legacy.jsp] ---\n<form><input name=\"userId\" /></form>"
+    assert prepared.legacy_bundle == "\n\n".join(block.text for block in prepared.anonymization_output.sanitized_input.source_blocks)
+    assert all(prepared.goal not in block.text for block in prepared.assembler_output.source_blocks)
+    assert set(item.code for item in prepared.assembler_output.missing_context) == {"runtime_context_missing"}
+
+
+def test_rebuild_assistant_prepare_input_uses_sanitized_bundle_for_downstream_analysis():
+    from mellow_link.modules.rebuild_assistant.schemas import RebuildAssetsPayload
+    from mellow_link.modules.rebuild_assistant.service import RebuildAssistantService
+
+    svc = RebuildAssistantService()
+    prepared = svc.prepare_input(
+        goal="john.doe@example.com 계정의 주문 조회 기능을 재구성해줘",
+        assets=RebuildAssetsPayload(
+            source_code="""
+public class OrderController {
+    public OrderSummary loadOrder() {
+        return fetch("/api/orders/list");
+    }
+}
+            """.strip(),
+            sql_queries="SELECT id, user_id, status FROM orders WHERE user_id = ? ORDER BY status DESC",
+        ),
+        constraints=["내부 서버 https://corp.example.internal 기준"],
+        temp_context="로그 파일 경로: C:\\legacy\\orders\\order_list.jsp",
+        temp_source_ref="temp-session-123",
+    )
+
+    assert prepared.anonymization_output is not None
+    sanitized_input = prepared.anonymization_output.sanitized_input
+    assert "EMAIL_001" in prepared.goal
+    assert "HOST_001" in prepared.constraints[0]
+    assert "API_PATH_001" in prepared.legacy_bundle
+    assert "TABLE_001" in prepared.legacy_bundle
+    assert "PATH_001" in prepared.temp_context
+    assert "/api/orders/list" not in prepared.legacy_bundle
+    assert " FROM orders " not in prepared.legacy_bundle
+    assert prepared.legacy_bundle == "\n\n".join(block.text for block in sanitized_input.source_blocks if block.text)
+
+
 def test_sql_analytics_classifies_risk_analysis_question():
     from mellow_link.modules.sql_analytics.service import SQLAnalyticsService
 
@@ -849,6 +1322,47 @@ def test_rebuild_assistant_runner_emits_structured_result(monkeypatch):
     assert set(payload["structured_result"]["layer_reconstruction"].keys()) == {"database", "backend", "frontend"}
     assert set(payload["structured_result"]["extracted_rules"].keys()) == {"status_permissions", "search_filters", "save_validation"}
     assert isinstance(payload["confidence"], float)
+    assert set(payload["anonymization_summary"].keys()) == {
+        "applied",
+        "policy_version",
+        "total_replacements",
+        "request_context_redacted",
+        "block_counts",
+        "risk_flags",
+    }
+    assert "anonymization_report" not in payload
+    assert "sanitized_input" not in payload
+    debug_events = [event for event in events if event["type"] == "debug_anonymization_report"]
+    assert len(debug_events) == 1
+    debug_payload = debug_events[0]["payload"]
+    assert set(debug_payload.keys()) == {
+        "policy_version",
+        "validation",
+        "report_summary",
+        "block_previews",
+        "anonymization_report",
+    }
+    assert "sanitized_input" not in debug_payload
+    assert isinstance(debug_payload["validation"]["findings"], list)
+    assert isinstance(debug_payload["block_previews"], list)
+    assert debug_payload["validation"]["passed"] is True
+    assert all(
+        set(item.keys()) == {"block_id", "kind", "replacement_count", "preview_text"}
+        for item in debug_payload["block_previews"]
+    )
+    anonymization_logs = [
+        event for event in events
+        if event["type"] == "log" and event["payload"].get("message") == "anonymization complete"
+    ]
+    assert len(anonymization_logs) == 1
+    assert set(anonymization_logs[0]["payload"].keys()) == {
+        "level",
+        "message",
+        "policy_version",
+        "applied",
+        "total_replacements",
+        "validation_passed",
+    }
     todo_ids = [event["payload"].get("todo_id") for event in events if event["type"] == "todo_started"]
     assert todo_ids == ["B1", "B2", "B3", "B4", "B5"]
 

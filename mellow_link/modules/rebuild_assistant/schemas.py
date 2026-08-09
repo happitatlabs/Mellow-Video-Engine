@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -21,6 +23,195 @@ class RebuildAssetsPayload(BaseModel):
                 self.framework_info,
             )
         )
+
+
+AssetKind = Literal[
+    "source_code",
+    "database_schema",
+    "sql_queries",
+    "ui_template",
+    "framework_info",
+    "unknown",
+]
+
+AssetOrigin = Literal[
+    "typed_form",
+    "temp_upload",
+    "api_inline",
+    "unknown",
+]
+
+SourceBlockKind = Literal[
+    "source_code",
+    "database_schema",
+    "sql_queries",
+    "ui_template",
+    "framework_info",
+    "unclassified_text",
+]
+
+MissingContextCode = Literal[
+    "goal_missing",
+    "structure_inputs_missing",
+    "database_context_missing",
+    "runtime_context_missing",
+]
+
+UnknownCode = Literal[
+    "unknown_asset_kind",
+    "empty_asset_text",
+    "partial_asset_metadata",
+]
+
+StructureRiskFlag = Literal[
+    "identifier_like_tokens_redacted",
+    "sql_identifiers_pseudonymized",
+    "high_redaction_density",
+]
+
+AnonymizationValidationCode = Literal[
+    "shape_not_preserved",
+    "asset_links_changed",
+    "user_payload_contains_full_report",
+    "user_payload_contains_sanitized_input",
+    "dev_event_visible_in_user_stream",
+]
+
+
+class InputAssemblerRequestContext(BaseModel):
+    goal: str | None = None
+    constraints: list[str] = Field(default_factory=list)
+
+
+class InputAsset(BaseModel):
+    asset_id: str
+    origin: AssetOrigin = "unknown"
+    declared_kind: AssetKind = "unknown"
+    text: str = ""
+    filename: str | None = None
+    media_type: str | None = None
+    source_ref: str | None = None
+
+
+class InputAssemblerV0Input(BaseModel):
+    request_context: InputAssemblerRequestContext = Field(default_factory=InputAssemblerRequestContext)
+    input_assets: list[InputAsset] = Field(default_factory=list)
+
+
+class AssetInventoryItem(BaseModel):
+    asset_id: str
+    origin: AssetOrigin
+    declared_kind: AssetKind
+    filename: str | None = None
+    media_type: str | None = None
+    source_ref: str | None = None
+    char_count: int = 0
+    mapped_block_ids: list[str] = Field(default_factory=list)
+
+
+class SourceBlock(BaseModel):
+    block_id: str
+    kind: SourceBlockKind
+    text: str = ""
+    asset_ids: list[str] = Field(default_factory=list)
+
+
+class MissingContextItem(BaseModel):
+    code: MissingContextCode
+    message: str
+
+
+class UnknownItem(BaseModel):
+    code: UnknownCode
+    asset_id: str | None = None
+    message: str
+
+
+class InputAssemblerV0Output(BaseModel):
+    assembler_version: Literal["input-assembler-v0"] = "input-assembler-v0"
+    request_context: InputAssemblerRequestContext = Field(default_factory=InputAssemblerRequestContext)
+    asset_inventory: list[AssetInventoryItem] = Field(default_factory=list)
+    source_blocks: list[SourceBlock] = Field(default_factory=list)
+    missing_context: list[MissingContextItem] = Field(default_factory=list)
+    unknowns: list[UnknownItem] = Field(default_factory=list)
+
+
+class AnonymizationBlockReport(BaseModel):
+    block_id: str
+    replacement_count: int = 0
+    applied_rules: list[str] = Field(default_factory=list)
+
+
+class AnonymizationAssetReport(BaseModel):
+    asset_id: str
+    filename_redacted: bool = False
+    source_ref_redacted: bool = False
+
+
+class AnonymizationRedactionSummary(BaseModel):
+    total_replacements: int = 0
+
+
+class AnonymizationReport(BaseModel):
+    policy_version: Literal["anonymization-v0-conservative"] = "anonymization-v0-conservative"
+    request_context_redacted: bool = False
+    block_reports: list[AnonymizationBlockReport] = Field(default_factory=list)
+    asset_reports: list[AnonymizationAssetReport] = Field(default_factory=list)
+    redaction_summary: AnonymizationRedactionSummary = Field(default_factory=AnonymizationRedactionSummary)
+    structure_risk_flags: list[StructureRiskFlag] = Field(default_factory=list)
+
+
+class AnonymizationV0Output(BaseModel):
+    sanitized_input: InputAssemblerV0Output
+    anonymization_report: AnonymizationReport = Field(default_factory=AnonymizationReport)
+
+
+class AnonymizationBlockCount(BaseModel):
+    block_id: str
+    replacement_count: int = 0
+
+
+class AnonymizationSummary(BaseModel):
+    applied: bool = False
+    policy_version: Literal["anonymization-v0-conservative"] = "anonymization-v0-conservative"
+    total_replacements: int = 0
+    request_context_redacted: bool = False
+    block_counts: list[AnonymizationBlockCount] = Field(default_factory=list)
+    risk_flags: list[StructureRiskFlag] = Field(default_factory=list)
+
+
+class AnonymizationValidationFinding(BaseModel):
+    code: AnonymizationValidationCode
+    message: str
+
+
+class AnonymizationValidationResult(BaseModel):
+    passed: bool = True
+    shape_preserved: bool = True
+    user_surface_safe: bool = True
+    findings: list[AnonymizationValidationFinding] = Field(default_factory=list)
+
+
+class AnonymizationDebugReportSummary(BaseModel):
+    applied: bool = False
+    total_replacements: int = 0
+    request_context_redacted: bool = False
+    risk_flags: list[StructureRiskFlag] = Field(default_factory=list)
+
+
+class AnonymizationBlockPreview(BaseModel):
+    block_id: str
+    kind: SourceBlockKind
+    replacement_count: int = 0
+    preview_text: str = ""
+
+
+class AnonymizationDebugEventPayload(BaseModel):
+    policy_version: Literal["anonymization-v0-conservative"] = "anonymization-v0-conservative"
+    validation: AnonymizationValidationResult = Field(default_factory=AnonymizationValidationResult)
+    report_summary: AnonymizationDebugReportSummary = Field(default_factory=AnonymizationDebugReportSummary)
+    block_previews: list[AnonymizationBlockPreview] = Field(default_factory=list)
+    anonymization_report: AnonymizationReport = Field(default_factory=AnonymizationReport)
 
 
 class LayeredListResult(BaseModel):

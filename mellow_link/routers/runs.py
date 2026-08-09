@@ -127,9 +127,14 @@ def _calc_duration_ms(run: AgentRun, events: List[Dict[str, Any]]) -> Optional[i
 
 
 def _summarize_run_row(run: AgentRun, db: Session) -> Dict[str, Any]:
-    events = get_run_events(run.run_id, db=db)
+    events = get_run_events(run.run_id, db=db, include_dev_only=False)
     decision = get_decision_from_events(events)
-    snapshot = get_run_snapshot(run.run_id, db=db, paused=RUN_CONTROL_STATE.get(run.run_id, {}).get("paused")) or {}
+    snapshot = get_run_snapshot(
+        run.run_id,
+        db=db,
+        paused=RUN_CONTROL_STATE.get(run.run_id, {}).get("paused"),
+        include_dev_only=False,
+    ) or {}
     block = snapshot.get("block") or {}
     duration_ms = _calc_duration_ms(run, events)
     module_id = getattr(run, "module_id", "engine") or "engine"
@@ -329,7 +334,7 @@ async def start_run_endpoint(
     run = _get_run_or_404(run_id, db)
     if not _run_owned_by_user(run, user.id, db):
         raise HTTPException(status_code=403, detail="해당 run에 대한 권한이 없습니다.")
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
     
@@ -436,7 +441,7 @@ async def get_run_endpoint(
     run = _get_run_or_404(run_id, db)
     if not _run_owned_by_user(run, user.id, db):
         raise HTTPException(status_code=403, detail="해당 run에 대한 권한이 없습니다.")
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
     return snapshot
@@ -452,10 +457,10 @@ async def get_run_dev_endpoint(
     run = _get_run_or_404(run_id, db)
     if not _run_owned_by_user(run, user.id, db):
         raise HTTPException(status_code=403, detail="해당 run에 대한 권한이 없습니다.")
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
-    events = get_run_events(run_id, db=db)
+    events = get_run_events(run_id, db=db, include_dev_only=False)
     decision = get_decision_from_events(events)
     health = compute_run_health(events)
     run = db.query(AgentRun).filter(AgentRun.run_id == run_id).first()
@@ -494,7 +499,7 @@ async def dev_get_run_events_endpoint(
     user: User = Depends(get_admin_user_required),
 ) -> Dict[str, Any]:
     _get_run_or_404(run_id, db)
-    return {"run_id": run_id, "events": get_run_events(run_id, db=db)}
+    return {"run_id": run_id, "events": get_run_events(run_id, db=db, include_dev_only=True)}
 
 
 @router.get("/api/dev/runs/{run_id}/raw")
@@ -504,8 +509,8 @@ async def dev_get_run_raw_endpoint(
     user: User = Depends(get_admin_user_required),
 ) -> Dict[str, Any]:
     run = _get_run_or_404(run_id, db)
-    events = get_run_events(run_id, db=db)
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    events = get_run_events(run_id, db=db, include_dev_only=True)
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     return {
         "run": {
             "run_id": run.run_id,
@@ -567,7 +572,7 @@ async def control_run_endpoint(
     """
     운영자 제어 액션 (Admin 전용). pause / retry / abort / force_finish.
     """
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
 
@@ -668,7 +673,7 @@ async def control_run_endpoint(
     if status_now not in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="Retry is allowed only for completed/failed runs")
 
-    events = get_run_events(run_id, db=db)
+    events = get_run_events(run_id, db=db, include_dev_only=False)
     start_ctx = _extract_start_context(events)
     user_input = (start_ctx.get("user_input") or "").strip()
     mode = (start_ctx.get("mode") or "fast").strip() or "fast"
@@ -748,7 +753,7 @@ async def approve_run_endpoint(
         )
         logger.info("[Runs] Run %s operator approved", run_id)
         return {"run_id": run_id, "accepted": True, "approved": True, "message": "승인되었습니다. 실행이 재개됩니다."}
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if snapshot and snapshot.get("needs_approval"):
         return {"run_id": run_id, "accepted": False, "approved": False, "message": "이미 처리되었거나 대기 중인 승인이 없습니다."}
     return {"run_id": run_id, "accepted": False, "approved": False, "message": "대기 중인 승인 요청이 없습니다."}
@@ -805,7 +810,7 @@ async def set_run_mode_endpoint(
     user: User = Depends(get_admin_user_required),
 ) -> Dict[str, Any]:
     """모드 강제 전환 (Admin 전용). Dev Console /force_fast 등."""
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
     mode = (request.mode or "").strip().lower() or "fast"
@@ -830,7 +835,7 @@ async def propose_tool_endpoint(
     user: User = Depends(get_admin_user_required),
 ) -> Dict[str, Any]:
     """도구 생성 요청 (Admin 전용). Dev Console /create_tool."""
-    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+    snapshot = get_run_snapshot(run_id, db=db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Run not found")
     state = RUN_CONTROL_STATE.setdefault(
@@ -868,13 +873,13 @@ async def stream_run_events(
         run = _get_run_or_404(run_id, initial_db)
         if not _run_owned_by_user(run, user.id, initial_db):
             raise HTTPException(status_code=403, detail="해당 run에 대한 권한이 없습니다.")
-        snapshot = get_run_snapshot(run_id, db=initial_db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+        snapshot = get_run_snapshot(run_id, db=initial_db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
         if not snapshot:
             raise HTTPException(status_code=404, detail="Run not found")
         if (format or "").lower() == "json" or "application/json" in (request.headers.get("accept") or "").lower():
             return {
                 "run_id": run_id,
-                "events": get_run_events(run_id=run_id, since_event_id=last_event_id, since_ts=last_ts, db=initial_db),
+                "events": get_run_events(run_id=run_id, since_event_id=last_event_id, since_ts=last_ts, db=initial_db, include_dev_only=False),
             }
         
         # last_event_id 초기화 (명시적 None 체크)
@@ -894,7 +899,8 @@ async def stream_run_events(
                         run_id=run_id,
                         since_event_id=initial_last_event_id,
                         since_ts=last_ts,
-                        db=replay_db
+                        db=replay_db,
+                        include_dev_only=False,
                     )
                     for event in events:
                         yield f"id: {event['id']}\n"
@@ -911,7 +917,8 @@ async def stream_run_events(
                     new_events = get_run_events(
                         run_id=run_id,
                         since_event_id=last_seen_id,
-                        db=poll_db
+                        db=poll_db,
+                        include_dev_only=False,
                     )
                     
                     for event in new_events:
@@ -924,10 +931,10 @@ async def stream_run_events(
                             return
                     
                     # 실행 완료 확인
-                    current_snapshot = get_run_snapshot(run_id, db=poll_db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"))
+                    current_snapshot = get_run_snapshot(run_id, db=poll_db, paused=RUN_CONTROL_STATE.get(run_id, {}).get("paused"), include_dev_only=False)
                     if current_snapshot and current_snapshot['status'] in ('completed', 'failed'):
                         # 마지막 이벤트 전송
-                        final_events = get_run_events(run_id=run_id, since_event_id=last_seen_id, db=poll_db)
+                        final_events = get_run_events(run_id=run_id, since_event_id=last_seen_id, db=poll_db, include_dev_only=False)
                         for event in final_events:
                             yield f"id: {event['id']}\n"
                             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"

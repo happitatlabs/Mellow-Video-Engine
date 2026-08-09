@@ -74,6 +74,40 @@
                     </div>
                 </div>
 
+                <div id="anonymizationCard" class="hidden rounded-3xl border border-white/10 bg-slate-900/60 p-6">
+                    <div class="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                            <h2 class="text-lg font-medium">입력 익명화</h2>
+                            <p class="mt-2 text-sm text-slate-400">사용자 확인용 요약만 보여줍니다.</p>
+                        </div>
+                        <span id="anonymizationAppliedBadge" class="px-3 py-1 rounded-full text-xs border border-white/10 bg-slate-800 text-slate-300">-</span>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-3 text-sm">
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">정책 버전</div>
+                            <div id="anonymizationPolicyVersion" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">총 치환 수</div>
+                            <div id="anonymizationTotalReplacements" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Request Context</div>
+                            <div id="anonymizationRequestContext" class="mt-2 text-slate-200">-</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3">
+                            <div class="text-slate-500 text-xs uppercase tracking-[0.15em]">Risk Flags</div>
+                            <div id="anonymizationRiskFlags" class="mt-2 flex flex-wrap gap-2">-</div>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <div class="text-xs uppercase tracking-[0.15em] text-slate-500 mb-3">블록별 치환 수</div>
+                        <div id="anonymizationBlockCounts" class="space-y-2">
+                            <div class="text-sm text-slate-500">익명화 정보가 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-6">
                     <h2 class="text-lg font-medium mb-4">중간 결과 / 최종 결과</h2>
                     <div id="resultSummary" class="text-sm text-slate-300 leading-7 whitespace-pre-wrap break-words max-h-[28rem] overflow-y-auto">
@@ -92,6 +126,7 @@
             events: [],
             activity: [],
             summary: '',
+            anonymizationSummary: null,
             pollTimer: null,
             lastEventId: null,
         };
@@ -121,6 +156,58 @@
                 if (ev.type === 'plan_created') return { tone: 'text-slate-300', text: '계획 생성: ' + ((p.todos || []).length) + '개 단계' };
                 return null;
             }).filter(Boolean);
+        }
+
+        function anonymizationTone(applied) {
+            return applied
+                ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-300'
+                : 'bg-slate-800 border-white/10 text-slate-300';
+        }
+
+        function blockLabel(blockId) {
+            const labels = {
+                'block:source_code': '소스 코드',
+                'block:database_schema': 'DB 스키마',
+                'block:sql_queries': 'SQL 쿼리',
+                'block:ui_template': 'UI 템플릿',
+                'block:framework_info': '프레임워크 정보',
+                'block:unclassified_text': '미분류 텍스트',
+            };
+            return labels[blockId] || blockId || '-';
+        }
+
+        function renderAnonymizationSummary() {
+            const card = document.getElementById('anonymizationCard');
+            const summary = state.anonymizationSummary;
+            if (!summary) {
+                card.classList.add('hidden');
+                return;
+            }
+            card.classList.remove('hidden');
+
+            const badge = document.getElementById('anonymizationAppliedBadge');
+            badge.className = 'px-3 py-1 rounded-full text-xs border ' + anonymizationTone(Boolean(summary.applied));
+            badge.textContent = summary.applied ? '적용됨' : '치환 없음';
+            document.getElementById('anonymizationPolicyVersion').textContent = summary.policy_version || '-';
+            document.getElementById('anonymizationTotalReplacements').textContent = String(summary.total_replacements != null ? summary.total_replacements : '-');
+            document.getElementById('anonymizationRequestContext').textContent = summary.request_context_redacted ? '치환됨' : '변경 없음';
+
+            const riskFlags = Array.isArray(summary.risk_flags) ? summary.risk_flags : [];
+            document.getElementById('anonymizationRiskFlags').innerHTML = riskFlags.length
+                ? riskFlags.map(function (flag) {
+                    return '<span class="px-2 py-1 rounded-full border border-amber-400/20 bg-amber-500/10 text-xs text-amber-200">' + flag + '</span>';
+                }).join('')
+                : '<span class="text-sm text-slate-400">없음</span>';
+
+            const blockCounts = Array.isArray(summary.block_counts) ? summary.block_counts : [];
+            document.getElementById('anonymizationBlockCounts').innerHTML = blockCounts.length
+                ? blockCounts.map(function (item) {
+                    return '<div class="rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 flex items-center justify-between gap-3">' +
+                        '<span class="text-sm text-slate-200">' + blockLabel(item.block_id) + '</span>' +
+                        '<span class="text-xs text-teal-300">' + String(item.replacement_count || 0) + '건</span>' +
+                        '</div>';
+                }).join('')
+                : '<div class="text-sm text-slate-500">블록별 치환 정보가 없습니다.</div>';
         }
 
         function renderSnapshot() {
@@ -174,6 +261,7 @@
                 ? activity.map(function (item) { return '<div class="rounded-2xl border border-white/8 bg-slate-950/40 px-4 py-3 text-sm ' + item.tone + '">' + item.text + '</div>'; }).join('')
                 : '<div class="text-sm text-slate-500">activity가 아직 없습니다.</div>';
 
+            renderAnonymizationSummary();
             document.getElementById('resultSummary').textContent = (snap.summary || state.summary || '결과 요약이 아직 없습니다.');
         }
 
@@ -190,8 +278,9 @@
             const data = await res.json();
             state.events = data.events || [];
             if (state.events.length) state.lastEventId = state.events[state.events.length - 1].id;
-            const finished = state.events.find(function (ev) { return ev.type === 'run_finished'; });
+            const finished = state.events.slice().reverse().find(function (ev) { return ev.type === 'run_finished'; });
             state.summary = finished && finished.payload ? (finished.payload.summary || '') : '';
+            state.anonymizationSummary = finished && finished.payload ? (finished.payload.anonymization_summary || null) : null;
             if (finished && state.snapshot) {
                 state.snapshot.status = finished.payload && finished.payload.success === false ? 'failed' : 'completed';
                 if (finished.payload && finished.payload.summary) {
@@ -226,6 +315,7 @@
                         state.lastEventId = payload.id != null ? payload.id : state.lastEventId;
                         if (payload.type === 'run_finished' && payload.payload) {
                             state.summary = payload.payload.summary || state.summary;
+                            state.anonymizationSummary = payload.payload.anonymization_summary || state.anonymizationSummary;
                         }
                     });
                     await loadSnapshot(runId);
@@ -244,6 +334,7 @@
             state.runId = runId;
             state.events = [];
             state.summary = '';
+            state.anonymizationSummary = null;
             state.lastEventId = null;
             stopPolling();
             await loadSnapshot(runId);
