@@ -4,6 +4,7 @@ import threading
 
 from mellow_link import app_state
 from mellow_link.infra.run_events import (
+    EVENT_TYPE_DEBUG_ANONYMIZATION_REPORT,
     EVENT_TYPE_LOG,
     EVENT_TYPE_PLAN_CREATED,
     EVENT_TYPE_RUN_FINISHED,
@@ -13,6 +14,10 @@ from mellow_link.infra.run_events import (
     emit_event,
 )
 
+from .anonymization_exposure import (
+    build_anonymization_debug_payload,
+    build_anonymization_summary,
+)
 from .schemas import RebuildAssetsPayload
 from .service import RebuildAssistantService
 
@@ -51,18 +56,44 @@ def start_rebuild_assistant_run(
             emit_event(run_id, EVENT_TYPE_PLAN_CREATED, {"todos": todos})
 
             emit_event(run_id, EVENT_TYPE_TODO_STARTED, todos[0])
-            prepared = service.prepare_input(goal=goal, assets=assets, constraints=constraints, temp_context=temp_context)
+            prepared = service.prepare_input(
+                goal=goal,
+                assets=assets,
+                constraints=constraints,
+                temp_context=temp_context,
+                temp_source_ref=temp_session_id,
+            )
+            if prepared.assembler_output is not None and prepared.anonymization_output is not None:
+                anonymization_summary = build_anonymization_summary(prepared.anonymization_output)
+                anonymization_debug = build_anonymization_debug_payload(
+                    original_input=prepared.assembler_output,
+                    anonymization_output=prepared.anonymization_output,
+                )
+                emit_event(
+                    run_id,
+                    EVENT_TYPE_DEBUG_ANONYMIZATION_REPORT,
+                    anonymization_debug.model_dump(),
+                )
+                # This log event is the audit-trace minimum for anonymization and is not a debug payload substitute.
+                emit_event(
+                    run_id,
+                    EVENT_TYPE_LOG,
+                    {
+                        "level": "info",
+                        "message": "anonymization complete",
+                        "policy_version": anonymization_summary.policy_version,
+                        "applied": anonymization_summary.applied,
+                        "total_replacements": anonymization_summary.total_replacements,
+                        "validation_passed": anonymization_debug.validation.passed,
+                    },
+                )
+            else:
+                anonymization_summary = None
             emit_event(
                 run_id,
-                EVENT_TYPE_LOG,
-                {
-                    "level": "info",
-                    "message": "rebuild input prepared",
-                    "scope_limited": prepared.scope_limited,
-                    "missing_context_count": len(prepared.missing_context),
-                },
+                EVENT_TYPE_TODO_DONE,
+                {**todos[0], "detail": "입력 검증, 업로드 문맥 수집, 익명화 결과를 확인했습니다."},
             )
-            emit_event(run_id, EVENT_TYPE_TODO_DONE, {**todos[0], "detail": "입력 검증, 업로드 문맥 수집, 범위 제한 여부를 확인했습니다."})
 
             emit_event(run_id, EVENT_TYPE_TODO_STARTED, todos[1])
             analysis_summary = service.analyze_assets(prepared)
@@ -104,6 +135,7 @@ def start_rebuild_assistant_run(
                     "confidence": result.confidence,
                     "needs_more_input": needs_more_input,
                     "scope_limited": prepared.scope_limited,
+                    "anonymization_summary": anonymization_summary.model_dump() if anonymization_summary else None,
                     "module_id": "rebuild_assistant",
                     "run_kind": "rebuild_plan",
                 },

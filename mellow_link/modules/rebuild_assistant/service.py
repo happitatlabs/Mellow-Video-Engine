@@ -3,7 +3,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from .anonymization_layer import AnonymizationLayerV0
+from .input_assembler import InputAssemblerV0
 from .schemas import (
+    AnonymizationV0Output,
+    InputAsset,
+    InputAssemblerV0Input,
+    InputAssemblerV0Output,
     ExtractedRulesEnvelope,
     LayeredListResult,
     RebuildAssetsPayload,
@@ -31,6 +37,8 @@ class PreparedRebuildInput:
     goal: str
     assets: RebuildAssetsPayload
     constraints: list[str]
+    assembler_output: InputAssemblerV0Output | None = None
+    anonymization_output: AnonymizationV0Output | None = None
     temp_context: str = ""
     legacy_bundle: str = ""
     scope_limited: bool = False
@@ -81,30 +89,40 @@ class RebuildAssistantService:
         assets: RebuildAssetsPayload,
         constraints: list[str] | None = None,
         temp_context: str = "",
+        temp_source_ref: str | None = None,
     ) -> PreparedRebuildInput:
-        constraints = [(item or "").strip() for item in (constraints or []) if (item or "").strip()]
-        cleaned_assets = RebuildAssetsPayload(
-            source_code=(assets.source_code or "").strip(),
-            database_schema=(assets.database_schema or "").strip(),
-            sql_queries=(assets.sql_queries or "").strip(),
-            ui_template=(assets.ui_template or "").strip(),
-            framework_info=(assets.framework_info or "").strip(),
+        assembler_input = InputAssemblerV0Input(
+            request_context={
+                "goal": goal,
+                "constraints": constraints or [],
+            },
+            input_assets=self._build_input_assets(
+                assets=assets,
+                temp_context=temp_context,
+                temp_source_ref=temp_source_ref,
+            ),
         )
-        parts = [
-            self._section("Source Code", cleaned_assets.source_code),
-            self._section("Database Schema", cleaned_assets.database_schema),
-            self._section("SQL Queries", cleaned_assets.sql_queries),
-            self._section("UI Template", cleaned_assets.ui_template),
-            self._section("Framework Info", cleaned_assets.framework_info),
-            self._section("Uploaded Context", (temp_context or "").strip()),
-        ]
+        assembler_output = InputAssemblerV0().assemble(assembler_input)
+        anonymization_output = AnonymizationLayerV0().sanitize(assembler_output)
+        sanitized_input = anonymization_output.sanitized_input
+        cleaned_assets = RebuildAssetsPayload(
+            source_code=self._get_block_text(sanitized_input, "source_code"),
+            database_schema=self._get_block_text(sanitized_input, "database_schema"),
+            sql_queries=self._get_block_text(sanitized_input, "sql_queries"),
+            ui_template=self._get_block_text(sanitized_input, "ui_template"),
+            framework_info=self._get_block_text(sanitized_input, "framework_info"),
+        )
+        normalized_temp_context = self._get_block_text(sanitized_input, "unclassified_text")
         prepared = PreparedRebuildInput(
-            goal=(goal or "").strip(),
+            goal=sanitized_input.request_context.goal or "",
             assets=cleaned_assets,
-            constraints=constraints,
-            temp_context=(temp_context or "").strip(),
-            legacy_bundle="\n\n".join(part for part in parts if part),
-            scope_limited=self.is_scope_limited(goal),
+            constraints=list(sanitized_input.request_context.constraints),
+            assembler_output=assembler_output,
+            anonymization_output=anonymization_output,
+            temp_context=normalized_temp_context,
+            legacy_bundle="\n\n".join(block.text for block in sanitized_input.source_blocks if block.text),
+            scope_limited=self.is_scope_limited(sanitized_input.request_context.goal or ""),
+            missing_context=[item.message for item in sanitized_input.missing_context],
         )
         prepared.signals = self.extract_feature_signals(prepared)
         prepared.missing_context = self.detect_missing_context(prepared)
@@ -115,15 +133,9 @@ class RebuildAssistantService:
         return bool(text) and any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in self.SCOPE_LIMIT_PATTERNS)
 
     def detect_missing_context(self, prepared: PreparedRebuildInput) -> list[str]:
-        missing: list[str] = []
-        if not prepared.assets.source_code and not prepared.assets.ui_template and not prepared.temp_context:
-            missing.append("레거시 화면 또는 서버 코드가 부족합니다.")
-        if not prepared.assets.database_schema and not prepared.assets.sql_queries:
-            missing.append("DB 스키마 또는 SQL 쿼리 정보가 부족합니다.")
-        if not prepared.assets.framework_info:
-            missing.append("기존 프레임워크/런타임 정보가 부족합니다.")
+        missing: list[str] = list(prepared.missing_context or [])
         if not prepared.signals.status_permissions and not prepared.signals.search_filters and not prepared.signals.save_validation:
-            missing.append("핵심 기능 흐름(권한/조회/저장 규칙)을 드러내는 코드 단서가 더 필요합니다.")
+            self._append_unique_missing(missing, "핵심 기능 흐름(권한/조회/저장 규칙)을 드러내는 코드 단서가 더 필요합니다.")
         return missing
 
     def extract_feature_signals(self, prepared: PreparedRebuildInput) -> FeatureSignals:
@@ -1030,6 +1042,51 @@ class RebuildAssistantService:
         lowered = (sql_text or "").lower()
         return lowered.count(" join ") >= 2 or lowered.count("case when") >= 2
 
+    def _build_input_assets(
+        self,
+        *,
+        assets: RebuildAssetsPayload,
+        temp_context: str,
+        temp_source_ref: str | None,
+    ) -> list[InputAsset]:
+        input_assets: list[InputAsset] = []
+        slot_values = {
+            "source_code": assets.source_code,
+            "database_schema": assets.database_schema,
+            "sql_queries": assets.sql_queries,
+            "ui_template": assets.ui_template,
+            "framework_info": assets.framework_info,
+        }
+        for kind, text in slot_values.items():
+            if not (text or "").strip():
+                continue
+            input_assets.append(
+                InputAsset(
+                    asset_id=f"typed_form:{kind}",
+                    origin="typed_form",
+                    declared_kind=kind,
+                    text=text,
+                )
+            )
+
+        if (temp_context or "").strip():
+            input_assets.append(
+                InputAsset(
+                    asset_id="temp_upload:context",
+                    origin="temp_upload",
+                    declared_kind="unknown",
+                    text=temp_context,
+                    source_ref=temp_source_ref,
+                )
+            )
+        return input_assets
+
+    def _get_block_text(self, assembler_output: InputAssemblerV0Output, kind: str) -> str:
+        for block in assembler_output.source_blocks:
+            if block.kind == kind:
+                return block.text
+        return ""
+
     def _section(self, title: str, value: str) -> str:
         if not (value or "").strip():
             return ""
@@ -1078,3 +1135,7 @@ class RebuildAssistantService:
             seen.add(key)
             output.append(item)
         return output
+
+    def _append_unique_missing(self, missing: list[str], message: str) -> None:
+        if message not in missing:
+            missing.append(message)

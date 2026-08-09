@@ -496,6 +496,7 @@ class VideoService:
         resolved_width = int(width) if width else int(MAGIC_WIDTH)
         resolved_height = int(height) if height else int(MAGIC_HEIGHT)
         load_image_node_id: Optional[str] = None
+        h3_node_ids: List[str] = []
         for _nid, node in workflow.items():
             if not isinstance(node, dict):
                 continue
@@ -506,6 +507,10 @@ class VideoService:
             if class_type == "loadimage":
                 inputs["image"] = comfy_input_image_name
                 load_image_node_id = str(_nid)
+            if "minimaxh3imagetovideo" in class_type:
+                h3_node_ids.append(str(_nid))
+                if prompt:
+                    inputs["prompt"] = prompt
             if prompt and isinstance(inputs.get("text"), str) and "%PROMPT%" in inputs["text"]:
                 inputs["text"] = inputs["text"].replace("%PROMPT%", prompt)
             if isinstance(inputs.get("text"), str) and "%NEGATIVE_PROMPT%" in inputs["text"]:
@@ -553,6 +558,42 @@ class VideoService:
                 if "init_image" in inputs and ("svd" in class_type or "video" in class_type):
                     inputs["init_image"] = [str(load_id), 0]
 
+            for nid in h3_node_ids:
+                node = workflow.get(nid)
+                inputs = node.get("inputs") if isinstance(node, dict) else None
+                if isinstance(inputs, dict):
+                    if "first_frame" in inputs:
+                        inputs["first_frame"] = [str(load_id), 0]
+                    if "last_frame" in inputs:
+                        inputs["last_frame"] = [str(load_id), 0]
+
+        return workflow
+
+    def _apply_minimax_h3_overrides(
+        self,
+        workflow: Dict[str, Any],
+        *,
+        target_duration: float,
+    ) -> Dict[str, Any]:
+        """Apply page defaults to the MiniMax H3 API workflow."""
+        runtime = self._runtime_video_settings()
+        duration = max(0.5, min(float(target_duration or runtime.get("minimax_h3_duration", 5.0)), 60.0))
+        fps = int(runtime.get("minimax_h3_fps", 24) or 24)
+        megapixels = float(runtime.get("minimax_h3_megapixels", 0.4) or 0.4)
+
+        for node in workflow.values():
+            if not isinstance(node, dict) or not isinstance(node.get("inputs"), dict):
+                continue
+            inputs = node["inputs"]
+            class_type = str(node.get("class_type") or "").lower()
+            if class_type == "resolutionselector":
+                inputs["megapixels"] = megapixels
+            elif class_type == "primitivefloat":
+                inputs["value"] = duration
+            elif class_type == "createvideo" and "fps" in inputs:
+                inputs["fps"] = fps
+            elif class_type == "savevideo" and "filename_prefix" in inputs:
+                inputs["filename_prefix"] = "video/Mellow_H3"
         return workflow
 
     def _normalize_mode(self, mode: Any) -> str:
@@ -655,6 +696,8 @@ class VideoService:
         runtime = self._runtime_video_settings()
         motion_spike = self._runtime_motion_spike_settings()
         normalized = str(mode or "").strip().upper()
+        if runtime.get("backend") == "minimax_h3" and normalized == "LOCAL_MOTION_LOOP":
+            return str(runtime.get("minimax_h3_workflow") or "video_minimax_h3_i2v.json")
         if normalized == "LOCAL_MOTION_LOOP":
             return str(
                 runtime.get("local_motion_workflow")
@@ -894,6 +937,11 @@ class VideoService:
                     width=int(getattr(request, "width", MAGIC_WIDTH) or MAGIC_WIDTH),
                     height=int(getattr(request, "height", MAGIC_HEIGHT) or MAGIC_HEIGHT),
                 )
+                if "minimax_h3" in workflow_path.name.lower():
+                    prompt = self._apply_minimax_h3_overrides(
+                        prompt,
+                        target_duration=float(getattr(request, "target_duration", 5.0) or 5.0),
+                    )
                 prompt = self._apply_locked_camera_overrides(
                     prompt,
                     mode=mode,

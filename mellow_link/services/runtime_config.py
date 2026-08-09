@@ -131,8 +131,14 @@ def get_video_generation_settings(settings: Dict[str, Any] | None = None) -> Dic
     video = data.get("video", {}) if isinstance(data, dict) else {}
     ambient = video.get("ambient_loop", {}) if isinstance(video, dict) else {}
     motion = video.get("motion_video", {}) if isinstance(video, dict) else {}
+    h3 = video.get("minimax_h3", {}) if isinstance(video, dict) else {}
     merged = {
         "default_mode": str(video.get("default_mode") or "LOCAL_MOTION_LOOP"),
+        "backend": str(video.get("backend") or "ltx").strip().lower(),
+        "minimax_h3_workflow": str(h3.get("workflow") or "video_minimax_h3_i2v.json"),
+        "minimax_h3_megapixels": float(h3.get("megapixels", 0.4) or 0.4),
+        "minimax_h3_fps": int(h3.get("fps", 24) or 24),
+        "minimax_h3_duration": float(h3.get("duration_seconds", 5.0) or 5.0),
         "locked_camera_mode": bool(video.get("locked_camera_mode", False)),
         "locked_camera_backend": str(video.get("locked_camera_backend") or "ambient_loop"),
         "locked_camera_workflow": str(video.get("locked_camera_workflow") or "svd_xt_locked_camera.json"),

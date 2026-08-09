@@ -1057,6 +1057,7 @@ async def gen_scene_video(session_id: str, scene_index: int, body: Dict[str, Any
         plan = s.scene_plans[idx - 1] if idx - 1 < len(s.scene_plans) else {}
         video_runtime = get_video_generation_settings(_load_settings())
         motion_spike = get_motion_video_spike_settings(_load_settings())
+        use_h3 = str(video_runtime.get("backend") or "").lower() == "minimax_h3"
         normalized_motion_prompt = _normalize_api_motion_prompt(motion_prompt.strip())
         req = VideoRequest(
             image_path=str(image_path),
@@ -1067,7 +1068,12 @@ async def gen_scene_video(session_id: str, scene_index: int, body: Dict[str, Any
             workflow=str(video_runtime.get("local_motion_workflow") or motion_spike.get("workflow") or "ltx_2b_v0_9_ckpt_i2v_lowmem.json"),
             width=int(video_runtime.get("local_motion_width", motion_spike.get("width", 576)) or 576),
             height=int(video_runtime.get("local_motion_height", motion_spike.get("height", 320)) or 320),
-            target_duration=float(video_runtime.get("local_motion_duration", motion_spike.get("duration_seconds", 2.83)) or 2.83),
+            target_duration=float(
+                video_runtime.get("minimax_h3_duration")
+                if use_h3
+                else video_runtime.get("local_motion_duration", motion_spike.get("duration_seconds", 2.83))
+                or 2.83
+            ),
             loop_mode="crossfade",
             overlap_seconds=0.35,
             fps=int(video_runtime.get("local_motion_fps", motion_spike.get("fps", 6)) or 6),
